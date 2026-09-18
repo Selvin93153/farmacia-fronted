@@ -39,7 +39,7 @@ function Login() {
       )
 
       navigate(
-        '/app/farmacias',
+        '/app/inicio',
         {
           replace: true,
         },

@@ -35,6 +35,17 @@ export interface UsuarioSesion {
   correo: string
   telefono: string
   estado: string
+
+   rol?: {
+    nombre: string
+    descripcion?: string
+  }
+
+  sucursal?: {
+    id_sucursal: number
+    codigo: string
+    nombre: string
+  } | null
 }
 
 export async function obtenerSesion(): Promise<UsuarioSesion> {

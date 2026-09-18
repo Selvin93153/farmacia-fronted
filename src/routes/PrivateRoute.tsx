@@ -5,9 +5,9 @@ import {
   CircularProgress,
 } from '@mui/material'
 
-import { obtenerSesion } from './authService'
+import { obtenerSesion } from '../modules/auth/authService'
 
-function RutaProtegida() {
+function PrivateRoute() {
   const [verificando, setVerificando] = useState(true)
   const [autenticado, setAutenticado] = useState(false)
 
@@ -33,8 +33,8 @@ function RutaProtegida() {
         sx={{
           minHeight: '100vh',
           display: 'flex',
-          justifyContent: 'center',
           alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <CircularProgress />
@@ -54,4 +54,4 @@ function RutaProtegida() {
   return <Outlet />
 }
 
-export default RutaProtegida
+export default PrivateRoute
