@@ -135,6 +135,35 @@ function Sidebar({
           />
         </ListItemButton>
 
+  <ListItemButton
+          component={NavLink}
+          to="/app/movimientos-inventario"
+          sx={{
+            '&.active': {
+              bgcolor: 'action.selected',
+            },
+          }}
+        >
+          <ListItemText
+            primary="Movimientos de Inventario"
+          />
+        </ListItemButton>
+
+
+        <ListItemButton
+          component={NavLink}
+          to="/app/planillas"
+          sx={{
+            '&.active': {
+              bgcolor: 'action.selected',
+            },
+          }}
+        >
+          <ListItemText
+            primary="Planillas"
+          />
+        </ListItemButton>
+        
 
 
       </List>
