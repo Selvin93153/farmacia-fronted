@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 
 import {
   Alert,
@@ -16,17 +17,15 @@ import {
 
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded'
 import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import EmailRoundedIcon from '@mui/icons-material/EmailRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
-import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded'
+import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded'
 
-import {
-  obtenerSesion,
-  type UsuarioSesion,
-} from '../auth/authService'
+import { obtenerSesion, type UsuarioSesion } from '../auth/authService'
 
 function Perfil() {
   const [usuario, setUsuario] = useState<UsuarioSesion | null>(null)
@@ -78,8 +77,7 @@ function Perfil() {
 
   const iniciales = `${usuario.nombre.charAt(0)}${usuario.apellido.charAt(0)}`
 
-  const nombreRol =
-    usuario.rol?.nombre ?? `Rol ${usuario.id_rol}`
+  const nombreRol = usuario.rol?.nombre ?? `Rol ${usuario.id_rol}`
 
   const nombreSucursal =
     usuario.sucursal?.nombre ??
@@ -101,120 +99,198 @@ function Perfil() {
         </Typography>
       </Box>
 
+      {/* TARJETA PRINCIPAL DEL PERFIL */}
       <Paper
-        elevation={0}
-        sx={(theme) => ({
+        variant="outlined"
+        sx={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 4,
-          color: theme.palette.primary.contrastText,
-          background: `linear-gradient(
-            135deg,
-            ${theme.palette.primary.dark} 0%,
-            ${theme.palette.primary.main} 65%,
-            ${theme.palette.primary.light} 130%
-          )`,
           p: {
             xs: 3,
             md: 4,
           },
+          bgcolor: 'background.paper',
+          borderColor: 'divider',
+          boxShadow: '0 8px 30px rgba(0, 0, 0, 0.05)',
 
           '&::before': {
             content: '""',
             position: 'absolute',
-            width: 260,
-            height: 260,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.08)',
-            top: -130,
-            right: -70,
+            top: 0,
+            left: 0,
+            width: 6,
+            height: '100%',
+            bgcolor: 'primary.main',
           },
-
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            width: 170,
-            height: 170,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.06)',
-            bottom: -90,
-            right: 180,
-          },
-        })}
+        }}
       >
         <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={3}
+          direction={{ xs: 'column', lg: 'row' }}
+          spacing={4}
           sx={{
-            position: 'relative',
-            zIndex: 1,
+            justifyContent: 'space-between',
             alignItems: {
-              xs: 'flex-start',
-              md: 'center',
+              xs: 'stretch',
+              lg: 'center',
             },
           }}
         >
-          <Avatar
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={3}
             sx={{
-              width: 100,
-              height: 100,
-              bgcolor: 'background.paper',
-              color: 'primary.main',
-              fontSize: 34,
-              fontWeight: 800,
-              boxShadow: 3,
+              alignItems: {
+                xs: 'flex-start',
+                sm: 'center',
+              },
             }}
           >
-            {iniciales}
-          </Avatar>
-
-          <Box>
-            <Typography
-              variant="body1"
+            <Avatar
               sx={{
-                opacity: 0.85,
-                mb: 0.5,
-              }}
-            >
-              Usuario SIGFAR
-            </Typography>
-
-            <Typography
-              variant="h4"
-              sx={{
+                width: 110,
+                height: 110,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                fontSize: 36,
                 fontWeight: 800,
+                boxShadow: 3,
               }}
             >
-              {nombreCompleto}
-            </Typography>
+              {iniciales}
+            </Avatar>
 
-            <Typography
-              sx={{
-                mt: 0.5,
-                opacity: 0.9,
-              }}
-            >
-              {usuario.correo}
-            </Typography>
-
-            <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-              <Chip
-                label={nombreRol}
+            <Box>
+              <Stack
+                direction="row"
+                spacing={1}
                 sx={{
-                  bgcolor: 'rgba(255,255,255,0.18)',
-                  color: 'inherit',
-                  fontWeight: 700,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  mb: 1,
                 }}
-              />
+              >
+                <Typography
+                  variant="overline"
+                  color="primary"
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: 1.2,
+                  }}
+                >
+                  Perfil de usuario
+                </Typography>
 
-              <Chip
-                label={usuario.estado}
+                <Chip
+                  icon={<CheckCircleRoundedIcon />}
+                  label={usuario.estado}
+                  color={usuario.estado === 'ACTIVO' ? 'success' : 'default'}
+                  size="small"
+                  sx={{ fontWeight: 700 }}
+                />
+              </Stack>
+
+              <Typography
+                variant="h4"
                 sx={{
-                  bgcolor: 'rgba(255,255,255,0.18)',
-                  color: 'inherit',
-                  fontWeight: 700,
+                  fontWeight: 800,
+                  color: 'text.primary',
                 }}
-              />
+              >
+                {nombreCompleto}
+              </Typography>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  mt: 1,
+                  alignItems: 'center',
+                  color: 'text.secondary',
+                }}
+              >
+                <EmailRoundedIcon fontSize="small" />
+
+                <Typography color="text.secondary">
+                  {usuario.correo}
+                </Typography>
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  mt: 2,
+                  flexWrap: 'wrap',
+                  gap: 1,
+                }}
+              >
+                <Chip
+                  icon={<AdminPanelSettingsRoundedIcon />}
+                  label={nombreRol}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ fontWeight: 700 }}
+                />
+
+                <Chip
+                  icon={<BusinessRoundedIcon />}
+                  label={nombreSucursal}
+                  variant="outlined"
+                  sx={{ fontWeight: 600 }}
+                />
+              </Stack>
+            </Box>
+          </Stack>
+
+          <Box
+            sx={{
+              width: {
+                xs: '100%',
+                lg: 280,
+              },
+              flexShrink: 0,
+              bgcolor: 'action.hover',
+              borderRadius: 3,
+              p: 3,
+              border: 1,
+              borderColor: 'divider',
+            }}
+          >
+            <Stack spacing={2}>
+              <Box
+                sx={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 2.5,
+                  bgcolor: 'success.main',
+                  color: 'success.contrastText',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <VerifiedUserRoundedIcon />
+              </Box>
+
+              <Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 0.5 }}
+                >
+                  Estado de la cuenta
+                </Typography>
+
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Cuenta habilitada
+                </Typography>
+              </Box>
+
+              <Typography variant="body2" color="text.secondary">
+                Tu usuario se encuentra registrado y habilitado para acceder a
+                SIGFAR según los permisos de tu rol.
+              </Typography>
             </Stack>
           </Box>
         </Stack>
@@ -353,10 +429,7 @@ function Perfil() {
                 </Box>
 
                 <Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
+                  <Typography variant="body2" color="text.secondary">
                     Rol asignado
                   </Typography>
 
@@ -372,10 +445,7 @@ function Perfil() {
                 </Box>
 
                 {usuario.rol?.descripcion && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
+                  <Typography variant="body2" color="text.secondary">
                     {usuario.rol.descripcion}
                   </Typography>
                 )}
@@ -407,10 +477,7 @@ function Perfil() {
                 </Box>
 
                 <Box>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
+                  <Typography variant="body2" color="text.secondary">
                     Sucursal asignada
                   </Typography>
 
@@ -426,10 +493,7 @@ function Perfil() {
                 </Box>
 
                 {usuario.sucursal?.codigo && (
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                  >
+                  <Typography variant="body2" color="text.secondary">
                     Código: {usuario.sucursal.codigo}
                   </Typography>
                 )}
@@ -497,7 +561,7 @@ function Perfil() {
 }
 
 interface InformacionPerfilProps {
-  icono: React.ReactNode
+  icono: ReactNode
   titulo: string
   valor: string
 }

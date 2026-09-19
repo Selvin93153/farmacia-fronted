@@ -1,13 +1,7 @@
 import { useState } from 'react'
-import {
-  Box,
-  Toolbar,
-} from '@mui/material'
+import {Box,Toolbar,} from '@mui/material'
 
-import {
-  Outlet,
-  useNavigate,
-} from 'react-router-dom'
+import { Outlet, useNavigate,} from 'react-router-dom'
 
 import Header from './Header'
 import Sidebar from './Sidebar'
@@ -17,18 +11,11 @@ import { cerrarSesion } from '../modules/auth/authService'
 function AppLayout() {
   const navigate = useNavigate()
 
-  const [menuAbierto, setMenuAbierto] =
-    useState(true)
+  const [menuAbierto, setMenuAbierto] = useState(true)
 
-  const [
-    cerrandoSesion,
-    setCerrandoSesion,
-  ] = useState(false)
+  const [ cerrandoSesion, setCerrandoSesion,] = useState(false)
 
-  const alternarMenu = () => {
-    setMenuAbierto((estadoActual) =>
-      !estadoActual
-    )
+  const alternarMenu = () => { setMenuAbierto((estadoActual) => !estadoActual  )
   }
 
   const manejarCerrarSesion = async () => {

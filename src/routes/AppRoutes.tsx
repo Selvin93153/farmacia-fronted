@@ -6,6 +6,7 @@ import Login from '../modules/auth/Login'
 import Inicio from '../modules/inicio/Inicio'
 import Perfil from '../modules/perfil/Perfil'
 import ControlSucursal from '../modules/sucursales/ControlSucursal'
+import ControlEmpleado from '../modules/empleados/ControlEmpleado'
 
 import PrivateRoute from './PrivateRoute'
 
@@ -21,6 +22,7 @@ function AppRoutes() {
           <Route path="inicio" element={<Inicio />} />
           <Route path="perfil" element={<Perfil />} />
           <Route path="farmacias" element={<ControlSucursal />} />
+          <Route path="empleados" element={<ControlEmpleado />} />
         </Route>
       </Route>
 

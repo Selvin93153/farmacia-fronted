@@ -91,6 +91,20 @@ function Sidebar({
             primary="Farmacias"
           />
         </ListItemButton>
+
+        <ListItemButton
+          component={NavLink}
+          to="/app/empleados"
+          sx={{
+            '&.active': {
+              bgcolor: 'action.selected',
+            },
+          }}
+        >
+          <ListItemText
+            primary="Empleados"
+          />
+        </ListItemButton>
       </List>
     </Drawer>
   )

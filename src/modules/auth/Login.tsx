@@ -7,11 +7,16 @@ import {
   Box,
   Button,
   CircularProgress,
+  IconButton,
+  InputAdornment,
   Paper,
   Stack,
   TextField,
   Typography,
 } from '@mui/material'
+
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
 
 import { iniciarSesion } from './authService'
 
@@ -20,36 +25,27 @@ function Login() {
 
   const [correo, setCorreo] = useState('')
   const [password, setPassword] = useState('')
+  const [mostrarPassword, setMostrarPassword] = useState(false)
 
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
 
-  const manejarLogin = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const manejarLogin = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
     setCargando(true)
     setError('')
 
     try {
-      await iniciarSesion(
-        correo,
-        password,
-      )
+      await iniciarSesion(correo, password)
 
-      navigate(
-        '/app/inicio',
-        {
-          replace: true,
-        },
-      )
+      navigate('/app/inicio', {
+        replace: true,
+      })
     } catch (error: unknown) {
       if (axios.isAxiosError(error)) {
         if (error.response?.status === 401) {
-          setError(
-            'Correo o contraseña incorrectos.',
-          )
+          setError('Correo o contraseña incorrectos.')
         } else if (error.response) {
           setError(
             `El backend respondió con error HTTP ${error.response.status}.`,
@@ -122,9 +118,7 @@ function Login() {
             label="Correo electrónico"
             type="email"
             value={correo}
-            onChange={(event) =>
-              setCorreo(event.target.value)
-            }
+            onChange={(event) => setCorreo(event.target.value)}
             required
             fullWidth
             autoComplete="email"
@@ -132,21 +126,40 @@ function Login() {
 
           <TextField
             label="Contraseña"
-            type="password"
+            type={mostrarPassword ? 'text' : 'password'}
             value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
+            onChange={(event) => setPassword(event.target.value)}
             required
             fullWidth
             autoComplete="current-password"
+            slotProps={{
+              input: {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() =>
+                        setMostrarPassword((estadoActual) => !estadoActual)
+                      }
+                      edge="end"
+                      aria-label={
+                        mostrarPassword
+                          ? 'Ocultar contraseña'
+                          : 'Mostrar contraseña'
+                      }
+                    >
+                      {mostrarPassword ? (
+                        <VisibilityOffRoundedIcon />
+                      ) : (
+                        <VisibilityRoundedIcon />
+                      )}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              },
+            }}
           />
 
-          {error && (
-            <Alert severity="error">
-              {error}
-            </Alert>
-          )}
+          {error && <Alert severity="error">{error}</Alert>}
 
           <Button
             type="submit"
@@ -155,10 +168,7 @@ function Login() {
             disabled={cargando}
           >
             {cargando ? (
-              <CircularProgress
-                size={24}
-                color="inherit"
-              />
+              <CircularProgress size={24} color="inherit" />
             ) : (
               'Iniciar sesión'
             )}
