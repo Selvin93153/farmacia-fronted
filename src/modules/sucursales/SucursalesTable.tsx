@@ -14,6 +14,7 @@ import {
 } from '@mui/material'
 
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
@@ -23,11 +24,13 @@ import type { Sucursal } from './sucursalesService'
 interface SucursalesTableProps {
   sucursales: Sucursal[]
   onVerSucursal: (sucursal: Sucursal) => void
+  onEditarSucursal: (sucursal: Sucursal) => void
 }
 
 function SucursalesTable({
   sucursales,
   onVerSucursal,
+  onEditarSucursal,
 }: SucursalesTableProps) {
   return (
     <TableContainer
@@ -38,7 +41,7 @@ function SucursalesTable({
         overflow: 'hidden',
       }}
     >
-      <Table aria-label="Listado de sucursales" sx={{ minWidth: 1000 }}>
+      <Table aria-label="Listado de sucursales" sx={{ minWidth: 1050 }}>
         <TableHead>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
@@ -47,6 +50,7 @@ function SucursalesTable({
             <TableCell sx={{ fontWeight: 700 }}>Ubicación</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+
             <TableCell align="center" sx={{ fontWeight: 700 }}>
               Acciones
             </TableCell>
@@ -144,6 +148,7 @@ function SucursalesTable({
                   sx={{ alignItems: 'center' }}
                 >
                   <PhoneRoundedIcon fontSize="small" color="action" />
+
                   <Typography variant="body2">
                     {sucursal.telefono || 'No registrado'}
                   </Typography>
@@ -153,25 +158,48 @@ function SucursalesTable({
               <TableCell>
                 <Chip
                   label={sucursal.estado}
-                  color={sucursal.estado === 'ACTIVO' ? 'success' : 'default'}
+                  color={
+                    sucursal.estado === 'ACTIVA'
+                      ? 'success'
+                      : 'default'
+                  }
                   size="small"
                   sx={{ fontWeight: 700 }}
                 />
               </TableCell>
 
               <TableCell align="center">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<VisibilityRoundedIcon />}
-                  onClick={() => onVerSucursal(sucursal)}
-                  sx={{
-                    textTransform: 'none',
-                    fontWeight: 600,
-                  }}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ justifyContent: 'center' }}
                 >
-                  Ver sucursal
-                </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<VisibilityRoundedIcon />}
+                    onClick={() => onVerSucursal(sucursal)}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Ver
+                  </Button>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<EditRoundedIcon />}
+                    onClick={() => onEditarSucursal(sucursal)}
+                    sx={{
+                      textTransform: 'none',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Editar
+                  </Button>
+                </Stack>
               </TableCell>
             </TableRow>
           ))}

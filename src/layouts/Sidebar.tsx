@@ -163,6 +163,21 @@ function Sidebar({
             primary="Planillas"
           />
         </ListItemButton>
+
+
+        <ListItemButton
+          component={NavLink}
+          to="/app/cajas"
+          sx={{
+            '&.active': {
+              bgcolor: 'action.selected',
+            },
+          }}
+        >
+          <ListItemText
+            primary="Control de Cajas"
+          />
+        </ListItemButton>
         
 
 

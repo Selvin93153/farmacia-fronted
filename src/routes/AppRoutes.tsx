@@ -12,6 +12,7 @@ import ControlInventario from '../modules/inventarios/ControlInventario'
 import ControlMovimientoInventario from '../modules/movimientos-inventario/ControlMovimientoInventario'
 import ControlPlanilla from '../modules/planillas/ControlPlanilla'
 import ControlDetallePlanilla from '../modules/detalles-planilla/ControlDetallePlanilla'
+import ControlCaja from '../modules/caja/ControlCaja' 
 
 
 import PrivateRoute from './PrivateRoute'
@@ -34,8 +35,7 @@ function AppRoutes() {
           <Route path="movimientos-inventario" element={<ControlMovimientoInventario />} />
           <Route path="planillas" element={<ControlPlanilla />} />
           <Route path="planillas/:id/detalle" element={<ControlDetallePlanilla />}/>
-          
-          
+          <Route path="cajas" element={<ControlCaja />} />
         </Route>
       </Route>
 

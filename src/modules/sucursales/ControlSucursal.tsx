@@ -25,6 +25,7 @@ import {
   Typography,
 } from '@mui/material'
 
+import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
@@ -34,24 +35,48 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
 
+import SucursalForm from './SucursalForm'
 import SucursalesTable from './SucursalesTable'
 
 import {
+  obtenerMunicipios,
+  type Municipio,
+} from '../municipios/municipiosService'
+
+import {
+  actualizarSucursal,
+  crearSucursal,
   obtenerSucursales,
+  type ActualizarSucursal,
+  type CrearSucursal,
   type Sucursal,
 } from './sucursalesService'
 
+type FiltroEstado = 'TODOS' | 'ACTIVA' | 'INACTIVA'
+
 function ControlSucursal() {
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
+  const [municipios, setMunicipios] = useState<Municipio[]>([])
+
   const [sucursalSeleccionada, setSucursalSeleccionada] =
     useState<Sucursal | null>(null)
 
+  const [sucursalEditando, setSucursalEditando] =
+    useState<Sucursal | null>(null)
+
+  const [formularioAbierto, setFormularioAbierto] = useState(false)
+
   const [cargando, setCargando] = useState(true)
+  const [guardando, setGuardando] = useState(false)
+
   const [error, setError] = useState('')
+  const [errorFormulario, setErrorFormulario] = useState('')
 
   const [busqueda, setBusqueda] = useState('')
-  const [filtroEstado, setFiltroEstado] = useState('TODOS')
+  const [filtroEstado, setFiltroEstado] =
+    useState<FiltroEstado>('TODOS')
 
+  // Convierte los errores del backend en mensajes entendibles para el usuario.
   const obtenerMensajeError = (
     error: unknown,
     mensajePredeterminado: string,
@@ -81,13 +106,35 @@ function ControlSucursal() {
     return mensajePredeterminado
   }
 
-  const consultarSucursales = async () => {
+  // Normaliza el estado porque actualmente existen referencias ACTIVO/ACTIVA en el proyecto.
+  const normalizarEstado = (
+    estado: string,
+  ): 'ACTIVA' | 'INACTIVA' | string => {
+    if (estado === 'ACTIVO' || estado === 'ACTIVA') {
+      return 'ACTIVA'
+    }
+
+    if (estado === 'INACTIVO' || estado === 'INACTIVA') {
+      return 'INACTIVA'
+    }
+
+    return estado
+  }
+
+  // Carga las sucursales y los municipios necesarios para administrar la vista.
+  const cargarDatos = async () => {
     setCargando(true)
     setError('')
 
     try {
-      const datos = await obtenerSucursales()
-      setSucursales(datos)
+      const [sucursalesRecibidas, municipiosRecibidos] =
+        await Promise.all([
+          obtenerSucursales(),
+          obtenerMunicipios(),
+        ])
+
+      setSucursales(sucursalesRecibidas)
+      setMunicipios(municipiosRecibidos)
     } catch (error: unknown) {
       setError(
         obtenerMensajeError(
@@ -101,15 +148,19 @@ function ControlSucursal() {
   }
 
   useEffect(() => {
-    consultarSucursales()
+    cargarDatos()
   }, [])
 
+  // Filtra las sucursales por búsqueda y estado sin realizar otra petición al backend.
   const sucursalesFiltradas = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
 
     return sucursales.filter((sucursal) => {
+      const estadoNormalizado = normalizarEstado(sucursal.estado)
+
       const coincideEstado =
-        filtroEstado === 'TODOS' || sucursal.estado === filtroEstado
+        filtroEstado === 'TODOS' ||
+        estadoNormalizado === filtroEstado
 
       const coincideBusqueda =
         texto === '' ||
@@ -126,12 +177,69 @@ function ControlSucursal() {
   const totalSucursales = sucursales.length
 
   const sucursalesActivas = sucursales.filter(
-    (sucursal) => sucursal.estado === 'ACTIVO',
+    (sucursal) => normalizarEstado(sucursal.estado) === 'ACTIVA',
   ).length
 
   const sucursalesInactivas = sucursales.filter(
-    (sucursal) => sucursal.estado === 'INACTIVO',
+    (sucursal) => normalizarEstado(sucursal.estado) === 'INACTIVA',
   ).length
+
+  const abrirNuevaSucursal = () => {
+    setSucursalEditando(null)
+    setErrorFormulario('')
+    setFormularioAbierto(true)
+  }
+
+  const abrirEditarSucursal = (sucursal: Sucursal) => {
+    setSucursalEditando(sucursal)
+    setErrorFormulario('')
+    setFormularioAbierto(true)
+  }
+
+  const cerrarFormulario = () => {
+    if (guardando) {
+      return
+    }
+
+    setFormularioAbierto(false)
+    setSucursalEditando(null)
+    setErrorFormulario('')
+  }
+
+  // Crea una sucursal nueva o actualiza la sucursal seleccionada.
+  const guardarSucursal = async (
+    datos: CrearSucursal | ActualizarSucursal,
+  ) => {
+    setGuardando(true)
+    setErrorFormulario('')
+
+    try {
+      if (sucursalEditando) {
+        await actualizarSucursal(
+          sucursalEditando.id_sucursal,
+          datos as ActualizarSucursal,
+        )
+      } else {
+        await crearSucursal(datos as CrearSucursal)
+      }
+
+      setFormularioAbierto(false)
+      setSucursalEditando(null)
+
+      await cargarDatos()
+    } catch (error: unknown) {
+      setErrorFormulario(
+        obtenerMensajeError(
+          error,
+          sucursalEditando
+            ? 'Ocurrió un error al actualizar la sucursal.'
+            : 'Ocurrió un error al crear la sucursal.',
+        ),
+      )
+    } finally {
+      setGuardando(false)
+    }
+  }
 
   return (
     <Stack spacing={3}>
@@ -147,32 +255,59 @@ function ControlSucursal() {
         }}
       >
         <Box>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{ fontWeight: 800 }}
+          >
             Farmacias
           </Typography>
 
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            color="text.secondary"
+            sx={{ mt: 0.5 }}
+          >
             Consulta y administra las sucursales registradas en SIGFAR.
           </Typography>
         </Box>
 
-        <Button
-          variant="outlined"
-          startIcon={<RefreshRoundedIcon />}
-          onClick={consultarSucursales}
-          disabled={cargando}
-          sx={{
-            textTransform: 'none',
-            fontWeight: 600,
-          }}
-        >
-          Actualizar
-        </Button>
+        <Stack direction="row" spacing={1.5}>
+          <Button
+            variant="outlined"
+            startIcon={<RefreshRoundedIcon />}
+            onClick={cargarDatos}
+            disabled={cargando}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Actualizar
+          </Button>
+
+          <Button
+            variant="contained"
+            startIcon={<AddRoundedIcon />}
+            onClick={abrirNuevaSucursal}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
+          >
+            Nueva sucursal
+          </Button>
+        </Stack>
       </Stack>
 
-      {cargando && <LinearProgress aria-label="Cargando sucursales" />}
+      {cargando && (
+        <LinearProgress aria-label="Cargando sucursales" />
+      )}
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && (
+        <Alert severity="error">
+          {error}
+        </Alert>
+      )}
 
       <Box
         sx={{
@@ -206,7 +341,10 @@ function ControlSucursal() {
         />
       </Box>
 
-      <Card variant="outlined" sx={{ borderRadius: 3 }}>
+      <Card
+        variant="outlined"
+        sx={{ borderRadius: 3 }}
+      >
         <CardContent>
           <Stack
             direction={{ xs: 'column', md: 'row' }}
@@ -221,7 +359,9 @@ function ControlSucursal() {
             <TextField
               placeholder="Buscar por código, nombre, tipo, dirección o teléfono..."
               value={busqueda}
-              onChange={(event) => setBusqueda(event.target.value)}
+              onChange={(event) =>
+                setBusqueda(event.target.value)
+              }
               fullWidth
               slotProps={{
                 input: {
@@ -235,17 +375,31 @@ function ControlSucursal() {
             />
 
             <FormControl sx={{ minWidth: 190 }}>
-              <InputLabel id="filtro-estado-sucursal-label">Estado</InputLabel>
+              <InputLabel id="filtro-estado-sucursal-label">
+                Estado
+              </InputLabel>
 
               <Select
                 labelId="filtro-estado-sucursal-label"
                 label="Estado"
                 value={filtroEstado}
-                onChange={(event) => setFiltroEstado(event.target.value)}
+                onChange={(event) =>
+                  setFiltroEstado(
+                    event.target.value as FiltroEstado,
+                  )
+                }
               >
-                <MenuItem value="TODOS">Todos</MenuItem>
-                <MenuItem value="ACTIVO">Activas</MenuItem>
-                <MenuItem value="INACTIVO">Inactivas</MenuItem>
+                <MenuItem value="TODOS">
+                  Todos
+                </MenuItem>
+
+                <MenuItem value="ACTIVA">
+                  Activas
+                </MenuItem>
+
+                <MenuItem value="INACTIVA">
+                  Inactivas
+                </MenuItem>
               </Select>
             </FormControl>
           </Stack>
@@ -266,8 +420,8 @@ function ControlSucursal() {
             }}
           >
             <Typography color="text.secondary">
-              Mostrando {sucursalesFiltradas.length} de {sucursales.length}{' '}
-              sucursales.
+              Mostrando {sucursalesFiltradas.length} de{' '}
+              {sucursales.length} sucursales.
             </Typography>
 
             {filtroEstado !== 'TODOS' && (
@@ -282,17 +436,30 @@ function ControlSucursal() {
           <SucursalesTable
             sucursales={sucursalesFiltradas}
             onVerSucursal={setSucursalSeleccionada}
+            onEditarSucursal={abrirEditarSucursal}
           />
         </>
       )}
 
-      {!cargando && sucursalesFiltradas.length === 0 && !error && (
-        <Alert severity="info">
-          {sucursales.length === 0
-            ? 'No hay sucursales registradas.'
-            : 'No se encontraron sucursales que coincidan con los filtros aplicados.'}
-        </Alert>
-      )}
+      {!cargando &&
+        sucursalesFiltradas.length === 0 &&
+        !error && (
+          <Alert severity="info">
+            {sucursales.length === 0
+              ? 'No hay sucursales registradas.'
+              : 'No se encontraron sucursales que coincidan con los filtros aplicados.'}
+          </Alert>
+        )}
+
+      <SucursalForm
+        abierto={formularioAbierto}
+        sucursal={sucursalEditando}
+        municipios={municipios}
+        guardando={guardando}
+        error={errorFormulario}
+        onCerrar={cerrarFormulario}
+        onGuardar={guardarSucursal}
+      />
 
       <Dialog
         open={sucursalSeleccionada !== null}
@@ -322,11 +489,17 @@ function ControlSucursal() {
             </Box>
 
             <Box>
-              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 700 }}
+              >
                 {sucursalSeleccionada?.nombre}
               </Typography>
 
-              <Typography variant="body2" color="text.secondary">
+              <Typography
+                variant="body2"
+                color="text.secondary"
+              >
                 {sucursalSeleccionada?.codigo}
               </Typography>
             </Box>
@@ -356,7 +529,9 @@ function ControlSucursal() {
                 <Chip
                   label={sucursalSeleccionada.estado}
                   color={
-                    sucursalSeleccionada.estado === 'ACTIVO'
+                    normalizarEstado(
+                      sucursalSeleccionada.estado,
+                    ) === 'ACTIVA'
                       ? 'success'
                       : 'default'
                   }
@@ -385,7 +560,10 @@ function ControlSucursal() {
                 <DetalleSucursal
                   icono={<PhoneRoundedIcon />}
                   titulo="Teléfono"
-                  valor={sucursalSeleccionada.telefono || 'No registrado'}
+                  valor={
+                    sucursalSeleccionada.telefono ||
+                    'No registrado'
+                  }
                 />
 
                 <DetalleSucursal
@@ -431,11 +609,19 @@ function ControlSucursal() {
                       bgcolor: 'action.hover',
                     }}
                   >
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       Latitud
                     </Typography>
 
-                    <Typography sx={{ mt: 0.5, fontWeight: 600 }}>
+                    <Typography
+                      sx={{
+                        mt: 0.5,
+                        fontWeight: 600,
+                      }}
+                    >
                       {sucursalSeleccionada.latitud}
                     </Typography>
                   </Box>
@@ -447,11 +633,19 @@ function ControlSucursal() {
                       bgcolor: 'action.hover',
                     }}
                   >
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                    >
                       Longitud
                     </Typography>
 
-                    <Typography sx={{ mt: 0.5, fontWeight: 600 }}>
+                    <Typography
+                      sx={{
+                        mt: 0.5,
+                        fontWeight: 600,
+                      }}
+                    >
                       {sucursalSeleccionada.longitud}
                     </Typography>
                   </Box>
@@ -462,7 +656,9 @@ function ControlSucursal() {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setSucursalSeleccionada(null)}>
+          <Button
+            onClick={() => setSucursalSeleccionada(null)}
+          >
             Cerrar
           </Button>
         </DialogActions>
@@ -498,7 +694,11 @@ function ResumenSucursal({
       }}
     >
       <CardContent>
-        <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{ alignItems: 'center' }}
+        >
           <Box
             sx={{
               width: 50,
@@ -515,11 +715,17 @@ function ResumenSucursal({
           </Box>
 
           <Box>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+            >
               {titulo}
             </Typography>
 
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            <Typography
+              variant="h4"
+              sx={{ fontWeight: 800 }}
+            >
               {valor}
             </Typography>
           </Box>
@@ -541,7 +747,11 @@ function DetalleSucursal({
   valor,
 }: DetalleSucursalProps) {
   return (
-    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+    <Stack
+      direction="row"
+      spacing={1.5}
+      sx={{ alignItems: 'flex-start' }}
+    >
       <Box
         sx={{
           width: 42,
@@ -559,7 +769,10 @@ function DetalleSucursal({
       </Box>
 
       <Box>
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          color="text.secondary"
+        >
           {titulo}
         </Typography>
 
