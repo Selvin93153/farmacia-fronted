@@ -37,6 +37,7 @@ export interface UsuarioSesion {
   estado: string
 
    rol?: {
+    codigo: string
     nombre: string
     descripcion?: string
   }
