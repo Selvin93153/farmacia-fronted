@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 
 import {
   Alert,
+  Autocomplete,
   Button,
   CircularProgress,
   Dialog,
@@ -66,6 +67,13 @@ const formularioInicial: FormularioSucursal = {
   telefono: '',
   estado: 'ACTIVA',
 }
+
+const normalizarTexto = (texto: string) =>
+  texto
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
 
 function SucursalForm({
   abierto,
@@ -260,6 +268,17 @@ function SucursalForm({
     await onGuardar(datos)
   }
 
+  const municipiosActivos = municipios.filter(
+    (municipio) => municipio.estado === 'ACTIVO',
+  )
+
+  const municipioSeleccionado =
+    municipiosActivos.find(
+      (municipio) =>
+        municipio.id_municipio.toString() ===
+        formulario.id_municipio,
+    ) ?? null
+
   return (
     <Dialog
       open={abierto}
@@ -396,38 +415,50 @@ function SucursalForm({
             </Typography>
           </Stack>
 
-          <FormControl fullWidth required>
-            <InputLabel id="municipio-sucursal-label">
-              Municipio
-            </InputLabel>
+          <Autocomplete
+            options={municipiosActivos}
+            value={municipioSeleccionado}
+            forcePopupIcon={false}
+            getOptionLabel={(municipio) =>
+              `${municipio.nombre} - ${municipio.departamento.nombre}`
+            }
+            isOptionEqualToValue={(option, value) =>
+              option.id_municipio === value.id_municipio
+            }
+            filterOptions={(options, state) => {
+              const busqueda = normalizarTexto(
+                state.inputValue,
+              )
 
-            <Select
-              labelId="municipio-sucursal-label"
-              label="Municipio"
-              value={formulario.id_municipio}
-              onChange={(event) =>
-                cambiarCampo(
-                  'id_municipio',
-                  event.target.value,
-                )
+              if (!busqueda) {
+                return []
               }
-            >
-              {municipios
-                .filter(
-                  (municipio) =>
-                    municipio.estado === 'ACTIVO',
+
+              return options
+                .filter((municipio) =>
+                  normalizarTexto(
+                    municipio.nombre,
+                  ).includes(busqueda),
                 )
-                .map((municipio) => (
-                  <MenuItem
-                    key={municipio.id_municipio}
-                    value={municipio.id_municipio.toString()}
-                  >
-                    {municipio.nombre} -{' '}
-                    {municipio.departamento.nombre}
-                  </MenuItem>
-                ))}
-            </Select>
-          </FormControl>
+                .slice(0, 20)
+            }}
+            onChange={(_, municipio) => {
+              cambiarCampo(
+                'id_municipio',
+                municipio?.id_municipio.toString() ?? '',
+              )
+            }}
+            noOptionsText="Escribe el nombre de un municipio"
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Municipio"
+                placeholder="Buscar municipio..."
+                required
+                fullWidth
+              />
+            )}
+          />
 
           <TextField
             label="Dirección"
