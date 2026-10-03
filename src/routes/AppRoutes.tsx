@@ -14,7 +14,8 @@ import ControlPlanilla from '../modules/planillas/ControlPlanilla'
 import ControlDetallePlanilla from '../modules/detalles-planilla/ControlDetallePlanilla'
 import ControlCaja from '../modules/caja/ControlCaja'
 import ControlVenta from '../modules/ventas/ControlVenta'
-import ControlDetalleVenta from '../modules/detalles-venta/ControlDetalleVenta' 
+import ControlDetalleVenta from '../modules/detalles-venta/ControlDetalleVenta'
+import ControlUsuario from '../modules/usuarios/ControlUsuario' 
 
 
 import PrivateRoute from './PrivateRoute'
@@ -40,6 +41,7 @@ function AppRoutes() {
           <Route path="cajas" element={<ControlCaja />} />
           <Route path="ventas" element={<ControlVenta />} />
           <Route path="ventas/:id/detalle" element={<ControlDetalleVenta />} />
+          <Route path="usuarios" element={<ControlUsuario />} />
         </Route>
       </Route>
 
