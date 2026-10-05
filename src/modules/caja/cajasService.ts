@@ -37,14 +37,23 @@ export interface ActualizarCaja {
   estado?: EstadoCaja
 }
 
-// Obtiene todas las cajas junto con la información relacionada de su sucursal.
+// Consulta todas las cajas, para los usuarios con alcance general.
 export async function obtenerCajas(): Promise<Caja[]> {
   const respuesta = await api.get<Caja[]>('/cajas')
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error(
-      'El backend respondió, pero no devolvió una lista de cajas.',
-    )
+    throw new Error('El backend respondió, pero no devolvió una lista de cajas.')
+  }
+
+  return respuesta.data
+}
+
+// Consulta las cajas de la sucursal del usuario autenticado.
+export async function obtenerCajasMiSucursal(): Promise<Caja[]> {
+  const respuesta = await api.get<Caja[]>('/cajas/mi-sucursal')
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error('El backend respondió, pero no devolvió una lista de cajas.')
   }
 
   return respuesta.data

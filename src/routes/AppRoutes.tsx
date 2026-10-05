@@ -14,9 +14,9 @@ import ControlPlanilla from '../modules/planillas/ControlPlanilla'
 import ControlDetallePlanilla from '../modules/detalles-planilla/ControlDetallePlanilla'
 import ControlCaja from '../modules/caja/ControlCaja'
 import ControlVenta from '../modules/ventas/ControlVenta'
+import ControlVentasRealizadas from '../modules/ventas/ControlVentasRealizadas'
 import ControlDetalleVenta from '../modules/detalles-venta/ControlDetalleVenta'
-import ControlUsuario from '../modules/usuarios/ControlUsuario' 
-
+import ControlUsuario from '../modules/usuarios/ControlUsuario'
 
 import PrivateRoute from './PrivateRoute'
 
@@ -37,16 +37,16 @@ function AppRoutes() {
           <Route path="inventario" element={<ControlInventario />} />
           <Route path="movimientos-inventario" element={<ControlMovimientoInventario />} />
           <Route path="planillas" element={<ControlPlanilla />} />
-          <Route path="planillas/:id/detalle" element={<ControlDetallePlanilla />}/>
+          <Route path="planillas/:id/detalle" element={<ControlDetallePlanilla />} />
           <Route path="cajas" element={<ControlCaja />} />
           <Route path="ventas" element={<ControlVenta />} />
+          <Route path="ventas/realizadas" element={<ControlVentasRealizadas />} />
           <Route path="ventas/:id/detalle" element={<ControlDetalleVenta />} />
           <Route path="usuarios" element={<ControlUsuario />} />
         </Route>
       </Route>
 
       <Route path="/" element={<Navigate to="/app/inicio" replace />} />
-
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
