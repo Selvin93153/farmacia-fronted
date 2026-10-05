@@ -338,7 +338,7 @@ function InventarioForm({
                         value={sucursal.id_sucursal.toString()}
                       >
                         {sucursal.codigo} - {sucursal.nombre}
-                        {sucursal.estado !== 'ACTIVO'
+                        {sucursal.estado !== 'ACTIVA'
                           ? ' (INACTIVA)'
                           : ''}
                       </MenuItem>
