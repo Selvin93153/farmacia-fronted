@@ -60,6 +60,17 @@ export async function obtenerEmpleados(): Promise<Empleado[]> {
   return respuesta.data
 }
 
+// Obtiene los empleados únicamente de la sucursal del usuario autenticado.
+export async function obtenerEmpleadosMiSucursal(): Promise<Empleado[]> {
+  const respuesta = await api.get<Empleado[]>('/empleados/mi-sucursal')
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error('El backend respondió, pero no devolvió una lista de empleados.')
+  }
+
+  return respuesta.data
+}
+
 export async function obtenerEmpleado(id: number): Promise<Empleado> {
   const respuesta = await api.get<Empleado>(`/empleados/${id}`)
   return respuesta.data
@@ -78,8 +89,6 @@ export async function actualizarEmpleado(
   return respuesta.data
 }
 
-
 export async function eliminarEmpleado(id: number): Promise<void> {
   await api.delete(`/empleados/${id}`)
 }
-

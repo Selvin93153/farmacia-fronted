@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-
 import {
   Alert,
   Button,
@@ -15,25 +14,22 @@ import {
   Stack,
   TextField,
 } from '@mui/material'
-
 import type { Sucursal } from '../sucursales/sucursalesService'
-
 import type {
   ActualizarEmpleado,
   CrearEmpleado,
   Empleado,
 } from './empleadosService'
-
 interface EmpleadoFormProps {
   abierto: boolean
   empleado: Empleado | null
   sucursales: Sucursal[]
+  idSucursalAsignada: number | null
   guardando: boolean
   error: string
   onCerrar: () => void
   onGuardar: (datos: CrearEmpleado | ActualizarEmpleado) => Promise<void>
 }
-
 interface FormularioEmpleado {
   id_sucursal: string
   codigo_empleado: string
@@ -45,7 +41,6 @@ interface FormularioEmpleado {
   fecha_ingreso: string
   estado: 'ACTIVO' | 'INACTIVO'
 }
-
 const formularioInicial: FormularioEmpleado = {
   id_sucursal: '',
   codigo_empleado: '',
@@ -57,11 +52,11 @@ const formularioInicial: FormularioEmpleado = {
   fecha_ingreso: '',
   estado: 'ACTIVO',
 }
-
 function EmpleadoForm({
   abierto,
   empleado,
   sucursales,
+  idSucursalAsignada,
   guardando,
   error,
   onCerrar,
@@ -69,16 +64,12 @@ function EmpleadoForm({
 }: EmpleadoFormProps) {
   const [formulario, setFormulario] =
     useState<FormularioEmpleado>(formularioInicial)
-
   const [errorFormulario, setErrorFormulario] = useState('')
-
   const editando = empleado !== null
-
   useEffect(() => {
     if (!abierto) {
       return
     }
-
     if (empleado) {
       setFormulario({
         id_sucursal: empleado.id_sucursal.toString(),
@@ -92,66 +83,64 @@ function EmpleadoForm({
         estado: empleado.estado === 'INACTIVO' ? 'INACTIVO' : 'ACTIVO',
       })
     } else {
-      setFormulario(formularioInicial)
+      setFormulario({
+        ...formularioInicial,
+        id_sucursal:
+          idSucursalAsignada === null ? '' : String(idSucursalAsignada),
+      })
     }
-
     setErrorFormulario('')
-  }, [abierto, empleado])
-
+  }, [abierto, empleado, idSucursalAsignada])
   const cambiarCampo = (campo: keyof FormularioEmpleado, valor: string) => {
     setFormulario((actual) => ({
       ...actual,
       [campo]: valor,
     }))
   }
-
   const manejarGuardar = async () => {
     setErrorFormulario('')
-
     if (!formulario.id_sucursal) {
       setErrorFormulario('Debes seleccionar una sucursal.')
       return
     }
-
+    if (
+      idSucursalAsignada !== null &&
+      Number(formulario.id_sucursal) !== idSucursalAsignada
+    ) {
+      setErrorFormulario('La sucursal no coincide con la sesión actual.')
+      return
+    }
     if (!formulario.codigo_empleado.trim()) {
       setErrorFormulario('El código del empleado es obligatorio.')
       return
     }
-
     if (!formulario.nombres.trim()) {
       setErrorFormulario('Los nombres del empleado son obligatorios.')
       return
     }
-
     if (!formulario.apellidos.trim()) {
       setErrorFormulario('Los apellidos del empleado son obligatorios.')
       return
     }
-
     if (!formulario.telefono.trim()) {
       setErrorFormulario('El teléfono es obligatorio.')
       return
     }
-
     if (!formulario.puesto.trim()) {
       setErrorFormulario('El puesto es obligatorio.')
       return
     }
-
     const salario = Number(formulario.salario_base)
-
     if (Number.isNaN(salario) || salario < 0) {
       setErrorFormulario(
         'El salario debe ser un número válido mayor o igual a cero.',
       )
       return
     }
-
     if (!formulario.fecha_ingreso) {
       setErrorFormulario('La fecha de ingreso es obligatoria.')
       return
     }
-
     const datosBase: CrearEmpleado = {
       id_sucursal: Number(formulario.id_sucursal),
       codigo_empleado: formulario.codigo_empleado.trim().toUpperCase(),
@@ -162,20 +151,16 @@ function EmpleadoForm({
       salario_base: salario,
       fecha_ingreso: formulario.fecha_ingreso,
     }
-
     if (editando) {
       const datosActualizar: ActualizarEmpleado = {
         ...datosBase,
         estado: formulario.estado,
       }
-
       await onGuardar(datosActualizar)
       return
     }
-
     await onGuardar(datosBase)
   }
-
   return (
     <Dialog
       open={abierto}
@@ -186,16 +171,17 @@ function EmpleadoForm({
       <DialogTitle sx={{ fontWeight: 700 }}>
         {editando ? 'Editar empleado' : 'Nuevo empleado'}
       </DialogTitle>
-
       <DialogContent dividers>
         <Stack spacing={3} sx={{ mt: 1 }}>
           {(error || errorFormulario) && (
             <Alert severity="error">{errorFormulario || error}</Alert>
           )}
-
-          <FormControl fullWidth required>
+          <FormControl
+            fullWidth
+            required
+            disabled={guardando || idSucursalAsignada !== null}
+          >
             <InputLabel id="sucursal-empleado-label">Sucursal</InputLabel>
-
             <Select
               labelId="sucursal-empleado-label"
               label="Sucursal"
@@ -214,7 +200,6 @@ function EmpleadoForm({
               ))}
             </Select>
           </FormControl>
-
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
               label="Código de empleado"
@@ -233,7 +218,6 @@ function EmpleadoForm({
                 },
               }}
             />
-
             <TextField
               label="Puesto"
               value={formulario.puesto}
@@ -247,7 +231,6 @@ function EmpleadoForm({
               }}
             />
           </Stack>
-
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
               label="Nombres"
@@ -261,7 +244,6 @@ function EmpleadoForm({
                 },
               }}
             />
-
             <TextField
               label="Apellidos"
               value={formulario.apellidos}
@@ -277,7 +259,6 @@ function EmpleadoForm({
               }}
             />
           </Stack>
-
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
               label="Teléfono"
@@ -293,7 +274,6 @@ function EmpleadoForm({
                 },
               }}
             />
-
             <TextField
               label="Salario base"
               type="number"
@@ -311,7 +291,6 @@ function EmpleadoForm({
               }}
             />
           </Stack>
-
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
             <TextField
               label="Fecha de ingreso"
@@ -328,11 +307,9 @@ function EmpleadoForm({
                 },
               }}
             />
-
             {editando && (
               <FormControl fullWidth>
                 <InputLabel id="estado-empleado-label">Estado</InputLabel>
-
                 <Select
                   labelId="estado-empleado-label"
                   label="Estado"
@@ -349,12 +326,10 @@ function EmpleadoForm({
           </Stack>
         </Stack>
       </DialogContent>
-
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onCerrar} disabled={guardando}>
           Cancelar
         </Button>
-
         <Button
           variant="contained"
           onClick={manejarGuardar}
@@ -375,5 +350,4 @@ function EmpleadoForm({
     </Dialog>
   )
 }
-
 export default EmpleadoForm

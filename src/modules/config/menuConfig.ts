@@ -125,6 +125,21 @@ export const menuConfig: SeccionMenu[] = [
       },
     ],
   },
+
+
+  {
+    titulo: 'Usuarios',
+    opciones: [
+      {
+        texto: 'Usuarios',
+        ruta: '/app/usuarios',
+        icono: BadgeRoundedIcon,
+        roles: [
+          'ADMIN_SISTEMA',
+        ],
+      },
+    ],
+  },
   {
     titulo: 'Administración',
     opciones: [
@@ -134,7 +149,6 @@ export const menuConfig: SeccionMenu[] = [
         icono: StoreRoundedIcon,
         roles: [
           'ADMIN_SISTEMA',
-          'ADMIN_SUCURSAL',
         ],
       },
     ],
