@@ -9,6 +9,7 @@ import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
 import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded'
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 
 export type CodigoRol =
   | 'ADMIN_SISTEMA'
@@ -65,6 +66,12 @@ export const menuConfig: SeccionMenu[] = [
         texto: 'Cajas',
         ruta: '/app/cajas',
         icono: PointOfSaleRoundedIcon,
+        roles: ['ADMIN_SUCURSAL'],
+      },
+      {
+        texto: 'Movimientos de Caja',
+        ruta: '/app/movimientos-caja',
+        icono: AccountBalanceWalletRoundedIcon,
         roles: ['ADMIN_SUCURSAL'],
       },
     ],

@@ -17,6 +17,7 @@ import ControlVenta from '../modules/ventas/ControlVenta'
 import ControlVentasRealizadas from '../modules/ventas/ControlVentasRealizadas'
 import ControlDetalleVenta from '../modules/detalles-venta/ControlDetalleVenta'
 import ControlUsuario from '../modules/usuarios/ControlUsuario'
+import ControlMovimientoCaja from '../modules/movimientos-caja/ControlMovimientoCaja'
 
 import PrivateRoute from './PrivateRoute'
 
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="ventas/realizadas" element={<ControlVentasRealizadas />} />
           <Route path="ventas/:id/detalle" element={<ControlDetalleVenta />} />
           <Route path="usuarios" element={<ControlUsuario />} />
+          <Route path="movimientos-caja" element={<ControlMovimientoCaja />} />
         </Route>
       </Route>
 
