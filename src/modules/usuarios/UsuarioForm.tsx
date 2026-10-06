@@ -17,11 +17,11 @@ import {
 
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded'
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded'
-
 import type { Rol } from '../roles/rolesService'
 import type {
   ActualizarUsuario,
   CrearUsuario,
+  EmpleadoUsuario,
   Usuario,
 } from './usuariosService'
 
@@ -36,6 +36,8 @@ interface UsuarioFormProps {
   usuario?: Usuario | null
   roles: Rol[]
   sucursales: SucursalOpcion[]
+  empleados: EmpleadoUsuario[]
+  usuarios: Usuario[]
   guardando?: boolean
   onGuardar: (
     datos: CrearUsuario | ActualizarUsuario,
@@ -47,17 +49,19 @@ function UsuarioForm({
   usuario,
   roles,
   sucursales,
+  empleados,
+  usuarios,
   guardando = false,
   onGuardar,
   onCancelar,
 }: UsuarioFormProps) {
   const modoEdicion = Boolean(usuario)
-
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
   const [correo, setCorreo] = useState('')
   const [telefono, setTelefono] = useState('')
   const [idRol, setIdRol] = useState<number | ''>('')
+  const [idEmpleado, setIdEmpleado] = useState<number | ''>('')
   const [idSucursal, setIdSucursal] = useState<number | ''>('')
   const [estado, setEstado] = useState<'ACTIVO' | 'INACTIVO'>('ACTIVO')
   const [password, setPassword] = useState('')
@@ -67,6 +71,7 @@ function UsuarioForm({
   const [error, setError] = useState('')
 
   // Carga los datos del usuario cuando el formulario está en modo edición.
+
   useEffect(() => {
     if (usuario) {
       setNombre(usuario.nombre)
@@ -74,6 +79,7 @@ function UsuarioForm({
       setCorreo(usuario.correo)
       setTelefono(usuario.telefono)
       setIdRol(usuario.id_rol)
+      setIdEmpleado(usuario.id_empleado ?? '')
       setIdSucursal(usuario.id_sucursal ?? '')
       setEstado(usuario.estado)
       setPassword('')
@@ -81,12 +87,12 @@ function UsuarioForm({
       setError('')
       return
     }
-
     setNombre('')
     setApellido('')
     setCorreo('')
     setTelefono('')
     setIdRol('')
+    setIdEmpleado('')
     setIdSucursal('')
     setEstado('ACTIVO')
     setPassword('')
@@ -98,9 +104,8 @@ function UsuarioForm({
     () => roles.find((rol) => rol.id === idRol),
     [roles, idRol],
   )
-
-  const esAdministradorSistema =
-    rolSeleccionado?.codigo === 'ADMIN_SISTEMA'
+  const esAdministradorSistema = rolSeleccionado?.codigo === 'ADMIN_SISTEMA'
+  const esAccesoNacional = esAdministradorSistema || rolSeleccionado?.codigo === 'RRHH'
 
   const rolesDisponibles = useMemo(
     () =>
@@ -122,134 +127,152 @@ function UsuarioForm({
     [sucursales, usuario],
   )
 
-  // El Administrador del Sistema no pertenece a una sucursal específica.
+  // Los roles nacionales no están limitados a una farmacia operativa.
+
   useEffect(() => {
-    if (esAdministradorSistema) {
+    if (esAccesoNacional) {
       setIdSucursal('')
     }
-  }, [esAdministradorSistema])
+  }, [esAccesoNacional])
+
+  const empleadosDisponibles = useMemo(() => {
+    const empleadosOcupados = new Set(
+      usuarios
+        .filter((item) => item.id_usuario !== usuario?.id_usuario)
+        .map((item) => item.id_empleado)
+        .filter((id): id is number => typeof id === 'number'),
+    )
+
+    return empleados.filter(
+      (empleado) =>
+        (empleado.estado === 'ACTIVO' || empleado.id_empleado === usuario?.id_empleado) &&
+        !empleadosOcupados.has(empleado.id_empleado),
+    )
+  }, [empleados, usuarios, usuario])
+
+  // Vincula el empleado y completa sus datos personales sin duplicar su registro.
+
+  const cambiarEmpleado = (id: number | '') => {
+    setIdEmpleado(id)
+
+    if (id === '') return
+
+    const empleado = empleados.find((item) => item.id_empleado === id)
+    if (!empleado) return
+
+    setNombre(empleado.nombres)
+    setApellido(empleado.apellidos)
+    setTelefono(empleado.telefono)
+
+    if (!esAccesoNacional) {
+      setIdSucursal(empleado.id_sucursal)
+    }
+  }
 
   const validarFormulario = () => {
     const nombreLimpio = nombre.trim()
     const apellidoLimpio = apellido.trim()
     const correoLimpio = correo.trim()
     const telefonoLimpio = telefono.trim()
-
     if (!nombreLimpio) {
       return 'El nombre es obligatorio.'
     }
-
     if (nombreLimpio.length > 100) {
       return 'El nombre no puede superar los 100 caracteres.'
     }
-
     if (!apellidoLimpio) {
       return 'El apellido es obligatorio.'
     }
-
     if (apellidoLimpio.length > 100) {
       return 'El apellido no puede superar los 100 caracteres.'
     }
-
     if (!correoLimpio) {
       return 'El correo es obligatorio.'
     }
-
     if (correoLimpio.length > 150) {
       return 'El correo no puede superar los 150 caracteres.'
     }
-
     const correoValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
     if (!correoValido.test(correoLimpio)) {
       return 'Ingresa un correo electrónico válido.'
     }
-
     if (!telefonoLimpio) {
       return 'El teléfono es obligatorio.'
     }
-
     if (telefonoLimpio.length > 20) {
       return 'El teléfono no puede superar los 20 caracteres.'
     }
-
     if (!idRol) {
       return 'Debes seleccionar un rol.'
     }
-
-    if (!esAdministradorSistema && !idSucursal) {
+    // Las cuentas existentes sin empleado se pueden vincular progresivamente.
+    if (!esAdministradorSistema && !idEmpleado && (!modoEdicion || usuario?.id_empleado != null)) {
+      return 'Debes seleccionar un empleado para este usuario.'
+    }
+    if (!esAccesoNacional && !idSucursal) {
       return 'Debes seleccionar una sucursal para este rol.'
     }
-
     if (!modoEdicion) {
       if (!password) {
         return 'La contraseña es obligatoria.'
       }
-
       if (password.length < 8) {
         return 'La contraseña debe tener al menos 8 caracteres.'
       }
-
       if (password.length > 100) {
         return 'La contraseña no puede superar los 100 caracteres.'
       }
-
       const passwordValida =
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/
-
       if (!passwordValida.test(password)) {
         return 'La contraseña debe contener al menos una mayúscula, una minúscula y un número.'
       }
-
       if (password !== confirmarPassword) {
         return 'Las contraseñas no coinciden.'
       }
     }
-
     return ''
   }
 
   // Valida el formulario y envía los datos correspondientes a crear o editar.
+
   const manejarSubmit = async (
     event: React.FormEvent<HTMLFormElement>,
   ) => {
     event.preventDefault()
-
     const mensajeValidacion = validarFormulario()
-
     if (mensajeValidacion) {
       setError(mensajeValidacion)
       return
     }
-
     setError('')
-
     const datosComunes = {
       id_rol: Number(idRol),
-      id_sucursal: esAdministradorSistema
-        ? null
-        : Number(idSucursal),
+      id_sucursal: esAccesoNacional ? null : Number(idSucursal),
       nombre: nombre.trim(),
       apellido: apellido.trim(),
       correo: correo.trim().toLowerCase(),
       telefono: telefono.trim(),
     }
-
     if (modoEdicion) {
       const datos: ActualizarUsuario = {
         ...datosComunes,
         estado,
       }
 
+      // Evita revalidar al empleado si no cambió la vinculación existente.
+      if ((idEmpleado || null) !== (usuario?.id_empleado ?? null)) {
+        datos.id_empleado = idEmpleado === '' ? null : Number(idEmpleado)
+      }
+
       await onGuardar(datos)
       return
     }
-
     const datos: CrearUsuario = {
       ...datosComunes,
+      id_empleado: idEmpleado === '' ? null : Number(idEmpleado),
       password,
     }
-
     await onGuardar(datos)
   }
 
@@ -269,7 +292,6 @@ function UsuarioForm({
               ? 'Editar usuario'
               : 'Nuevo usuario'}
           </Typography>
-
           <Typography
             variant="body2"
             color="text.secondary"
@@ -280,12 +302,58 @@ function UsuarioForm({
               : 'Registra una nueva cuenta de acceso a SIGFAR.'}
           </Typography>
         </Box>
-
         {error && (
           <Alert severity="error">
             {error}
           </Alert>
         )}
+        <Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1.5 }}>
+            Empleado asociado
+          </Typography>
+
+          <FormControl
+            fullWidth
+            required={!esAdministradorSistema && (!modoEdicion || usuario?.id_empleado != null)}
+            disabled={guardando}
+          >
+            <InputLabel id="usuario-empleado-label">Empleado</InputLabel>
+            <Select
+              labelId="usuario-empleado-label"
+              label="Empleado"
+              value={idEmpleado}
+              onChange={(event) => {
+  const valor = String(event.target.value)
+  cambiarEmpleado(valor === '' ? '' : Number(valor))
+}}
+            >
+              {(esAdministradorSistema || (modoEdicion && usuario?.id_empleado == null)) && (
+                <MenuItem value="">
+                  {esAdministradorSistema
+                    ? 'Sin empleado (cuenta técnica o soporte)'
+                    : 'Pendiente de vincular empleado'}
+                </MenuItem>
+              )}
+              {empleadosDisponibles.map((empleado) => (
+                <MenuItem key={empleado.id_empleado} value={empleado.id_empleado}>
+                  {empleado.codigo_empleado} - {empleado.nombres} {empleado.apellidos}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Solo aparecen empleados disponibles. Al seleccionar uno, se completan
+            automáticamente su nombre, apellido y teléfono.
+          </Typography>
+
+          {empleadosDisponibles.length === 0 && !modoEdicion && (
+            <Alert severity="info" sx={{ mt: 1.5 }}>
+              No hay empleados disponibles para vincular. Registra primero al empleado
+              o verifica que no tenga otra cuenta de usuario.
+            </Alert>
+          )}
+        </Box>
 
         <Box
           sx={{
@@ -312,7 +380,6 @@ function UsuarioForm({
               },
             }}
           />
-
           <TextField
             label="Apellido"
             value={apellido}
@@ -328,7 +395,6 @@ function UsuarioForm({
               },
             }}
           />
-
           <TextField
             label="Correo electrónico"
             type="email"
@@ -345,7 +411,6 @@ function UsuarioForm({
               },
             }}
           />
-
           <TextField
             label="Teléfono"
             value={telefono}
@@ -361,7 +426,6 @@ function UsuarioForm({
               },
             }}
           />
-
           <FormControl
             fullWidth
             required
@@ -370,7 +434,6 @@ function UsuarioForm({
             <InputLabel id="usuario-rol-label">
               Rol
             </InputLabel>
-
             <Select
               labelId="usuario-rol-label"
               label="Rol"
@@ -391,20 +454,18 @@ function UsuarioForm({
               ))}
             </Select>
           </FormControl>
-
           <FormControl
             fullWidth
-            required={!esAdministradorSistema}
+            required={!esAccesoNacional}
             disabled={
               guardando ||
               !idRol ||
-              esAdministradorSistema
+              esAccesoNacional
             }
           >
             <InputLabel id="usuario-sucursal-label">
               Sucursal
             </InputLabel>
-
             <Select
               labelId="usuario-sucursal-label"
               label="Sucursal"
@@ -428,17 +489,15 @@ function UsuarioForm({
             </Select>
           </FormControl>
         </Box>
-
-        {esAdministradorSistema && (
+        {esAccesoNacional && (
           <Alert severity="info">
-            El Administrador del Sistema tiene acceso general a la plataforma y no necesita estar asignado a una sucursal.
+            Este rol tiene alcance nacional y no necesita una sucursal de acceso.
+            Su sede de trabajo sigue registrada en la ficha del empleado.
           </Alert>
         )}
-
         {!modoEdicion && (
           <>
             <DividerFormulario />
-
             <Box>
               <Typography
                 variant="subtitle1"
@@ -446,7 +505,6 @@ function UsuarioForm({
               >
                 Contraseña de acceso
               </Typography>
-
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -455,7 +513,6 @@ function UsuarioForm({
                 Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.
               </Typography>
             </Box>
-
             <Box
               sx={{
                 display: 'grid',
@@ -508,7 +565,6 @@ function UsuarioForm({
                   },
                 }}
               />
-
               <TextField
                 label="Confirmar contraseña"
                 type={
@@ -556,11 +612,9 @@ function UsuarioForm({
             </Box>
           </>
         )}
-
         {modoEdicion && (
           <>
             <DividerFormulario />
-
             <FormControl
               fullWidth
               disabled={guardando}
@@ -568,7 +622,6 @@ function UsuarioForm({
               <InputLabel id="usuario-estado-label">
                 Estado
               </InputLabel>
-
               <Select
                 labelId="usuario-estado-label"
                 label="Estado"
@@ -584,7 +637,6 @@ function UsuarioForm({
                 <MenuItem value="ACTIVO">
                   ACTIVO
                 </MenuItem>
-
                 <MenuItem value="INACTIVO">
                   INACTIVO
                 </MenuItem>
@@ -592,7 +644,6 @@ function UsuarioForm({
             </FormControl>
           </>
         )}
-
         <Stack
           direction={{
             xs: 'column',
@@ -610,7 +661,6 @@ function UsuarioForm({
           >
             Cancelar
           </Button>
-
           <Button
             type="submit"
             variant="contained"
@@ -629,6 +679,7 @@ function UsuarioForm({
 }
 
 function DividerFormulario() {
+
   return (
     <Box
       sx={{

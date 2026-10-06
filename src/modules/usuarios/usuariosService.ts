@@ -39,10 +39,23 @@ export interface RolUsuario {
   actualizado_en: string
 }
 
+// Datos del empleado requeridos para vincular una cuenta.
+export interface EmpleadoUsuario {
+  id_empleado: number
+  id_sucursal: number
+  codigo_empleado: string
+  nombres: string
+  apellidos: string
+  telefono: string
+  puesto: string
+  estado: string
+}
+
 export interface Usuario {
   id_usuario: number
   id_rol: number
   id_sucursal: number | null
+  id_empleado: number | null
   nombre: string
   apellido: string
   correo: string
@@ -56,6 +69,7 @@ export interface Usuario {
 export interface CrearUsuario {
   id_rol: number
   id_sucursal?: number | null
+  id_empleado?: number | null
   nombre: string
   apellido: string
   correo: string
@@ -66,6 +80,7 @@ export interface CrearUsuario {
 export interface ActualizarUsuario {
   id_rol?: number
   id_sucursal?: number | null
+  id_empleado?: number | null
   nombre?: string
   apellido?: string
   correo?: string
@@ -84,21 +99,26 @@ export async function obtenerUsuarios(): Promise<Usuario[]> {
   return respuesta.data
 }
 
-// Obtiene un usuario específico por su identificador.
-export async function obtenerUsuario(
-  idUsuario: number,
-): Promise<Usuario> {
-  const respuesta = await api.get<Usuario>(`/usuarios/${idUsuario}`)
+// Consulta los empleados para asociarlos a las cuentas de usuario.
+export async function obtenerEmpleadosParaUsuarios(): Promise<EmpleadoUsuario[]> {
+  const respuesta = await api.get<EmpleadoUsuario[]>('/empleados')
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error('La respuesta de empleados no tiene el formato esperado.')
+  }
 
   return respuesta.data
 }
 
-// Crea una nueva cuenta de usuario.
-export async function crearUsuario(
-  datos: CrearUsuario,
-): Promise<Usuario> {
-  const respuesta = await api.post<Usuario>('/usuarios', datos)
+// Obtiene un usuario específico por su identificador.
+export async function obtenerUsuario(idUsuario: number): Promise<Usuario> {
+  const respuesta = await api.get<Usuario>(`/usuarios/${idUsuario}`)
+  return respuesta.data
+}
 
+// Crea una nueva cuenta de usuario.
+export async function crearUsuario(datos: CrearUsuario): Promise<Usuario> {
+  const respuesta = await api.post<Usuario>('/usuarios', datos)
   return respuesta.data
 }
 
@@ -107,10 +127,6 @@ export async function actualizarUsuario(
   idUsuario: number,
   datos: ActualizarUsuario,
 ): Promise<Usuario> {
-  const respuesta = await api.patch<Usuario>(
-    `/usuarios/${idUsuario}`,
-    datos,
-  )
-
+  const respuesta = await api.patch<Usuario>(`/usuarios/${idUsuario}`, datos)
   return respuesta.data
 }

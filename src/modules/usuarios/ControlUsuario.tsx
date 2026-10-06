@@ -26,24 +26,21 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import GroupRoundedIcon from '@mui/icons-material/GroupRounded'
 import PersonOffRoundedIcon from '@mui/icons-material/PersonOffRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
-
 import axios from 'axios'
-
 import { obtenerRoles, type Rol } from '../roles/rolesService'
 import { obtenerSucursales } from '../sucursales/sucursalesService'
-
 import UsuarioForm, {
   type SucursalOpcion,
 } from './UsuarioForm'
-
 import UsuariosTable from './UsuariosTable'
-
 import {
   actualizarUsuario,
   crearUsuario,
+  obtenerEmpleadosParaUsuarios,
   obtenerUsuarios,
   type ActualizarUsuario,
   type CrearUsuario,
+  type EmpleadoUsuario,
   type Usuario,
 } from './usuariosService'
 
@@ -51,18 +48,15 @@ function ControlUsuario() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [roles, setRoles] = useState<Rol[]>([])
   const [sucursales, setSucursales] = useState<SucursalOpcion[]>([])
-
+  const [empleados, setEmpleados] = useState<EmpleadoUsuario[]>([])
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
-
   const [dialogoAbierto, setDialogoAbierto] = useState(false)
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | null>(null)
-
   const [busqueda, setBusqueda] = useState('')
   const [filtroRol, setFiltroRol] = useState('')
   const [filtroSucursal, setFiltroSucursal] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
-
   const [mensaje, setMensaje] = useState('')
   const [tipoMensaje, setTipoMensaje] = useState<'success' | 'error'>('success')
 
@@ -73,47 +67,42 @@ function ControlUsuario() {
   ) => {
     if (axios.isAxiosError(error)) {
       const mensajeBackend = error.response?.data?.message
-
       if (Array.isArray(mensajeBackend)) {
         return mensajeBackend.join(', ')
       }
-
       if (typeof mensajeBackend === 'string') {
         return mensajeBackend
       }
-
       if (error.response) {
         return `El backend respondió con error HTTP ${error.response.status}.`
       }
-
       return 'No se pudo establecer comunicación con el servidor.'
     }
-
     if (error instanceof Error) {
       return error.message
     }
-
     return mensajePredeterminado
   }
 
-  // Carga los usuarios, roles y sucursales requeridos por la vista.
+  // Carga usuarios, roles, sucursales y empleados para asociar las cuentas.
+
   const cargarDatos = async () => {
     try {
       setCargando(true)
-
       const [
         usuariosRespuesta,
         rolesRespuesta,
         sucursalesRespuesta,
+        empleadosRespuesta,
       ] = await Promise.all([
         obtenerUsuarios(),
         obtenerRoles(),
         obtenerSucursales(),
+        obtenerEmpleadosParaUsuarios(),
       ])
-
       setUsuarios(usuariosRespuesta)
       setRoles(rolesRespuesta)
-
+      setEmpleados(empleadosRespuesta)
       setSucursales(
         sucursalesRespuesta.map((sucursal) => ({
           id_sucursal: sucursal.id_sucursal,
@@ -141,7 +130,6 @@ function ControlUsuario() {
 
   const usuariosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
-
     return usuarios.filter((usuario) => {
       const coincideBusqueda =
         !texto ||
@@ -150,19 +138,15 @@ function ControlUsuario() {
           .includes(texto) ||
         usuario.correo.toLowerCase().includes(texto) ||
         usuario.telefono.toLowerCase().includes(texto)
-
       const coincideRol =
         !filtroRol ||
         usuario.rol?.codigo === filtroRol
-
       const coincideSucursal =
         !filtroSucursal ||
         String(usuario.id_sucursal) === filtroSucursal
-
       const coincideEstado =
         !filtroEstado ||
         usuario.estado === filtroEstado
-
       return (
         coincideBusqueda &&
         coincideRol &&
@@ -179,7 +163,6 @@ function ControlUsuario() {
   ])
 
   const totalUsuarios = usuarios.length
-
   const usuariosActivos = useMemo(
     () =>
       usuarios.filter(
@@ -187,7 +170,6 @@ function ControlUsuario() {
       ).length,
     [usuarios],
   )
-
   const usuariosInactivos = useMemo(
     () =>
       usuarios.filter(
@@ -195,7 +177,6 @@ function ControlUsuario() {
       ).length,
     [usuarios],
   )
-
   const administradores = useMemo(
     () =>
       usuarios.filter(
@@ -207,6 +188,7 @@ function ControlUsuario() {
   )
 
   // Abre el formulario para registrar una nueva cuenta.
+
   const abrirNuevoUsuario = () => {
     setUsuarioEditando(null)
     setDialogoAbierto(true)
@@ -222,36 +204,31 @@ function ControlUsuario() {
     if (guardando) {
       return
     }
-
     setDialogoAbierto(false)
     setUsuarioEditando(null)
   }
 
   // Guarda un nuevo usuario o actualiza el usuario seleccionado.
+
   const guardarUsuario = async (
     datos: CrearUsuario | ActualizarUsuario,
   ) => {
     try {
       setGuardando(true)
-
       if (usuarioEditando) {
         await actualizarUsuario(
           usuarioEditando.id_usuario,
           datos as ActualizarUsuario,
         )
-
         setTipoMensaje('success')
         setMensaje('Usuario actualizado correctamente.')
       } else {
         await crearUsuario(datos as CrearUsuario)
-
         setTipoMensaje('success')
         setMensaje('Usuario creado correctamente.')
       }
-
       setDialogoAbierto(false)
       setUsuarioEditando(null)
-
       await cargarDatos()
     } catch (error) {
       setTipoMensaje('error')
@@ -316,7 +293,6 @@ function ControlUsuario() {
           >
             Usuarios
           </Typography>
-
           <Typography
             variant="body1"
             color="text.secondary"
@@ -327,7 +303,6 @@ function ControlUsuario() {
             Administra las cuentas de acceso, roles y sucursales de los usuarios de SIGFAR.
           </Typography>
         </Box>
-
         <Button
           variant="contained"
           startIcon={<AddRoundedIcon />}
@@ -336,7 +311,6 @@ function ControlUsuario() {
           Nuevo usuario
         </Button>
       </Stack>
-
       <Box
         sx={{
           display: 'grid',
@@ -359,7 +333,6 @@ function ControlUsuario() {
               }}
             >
               <GroupRoundedIcon color="primary" />
-
               <Box>
                 <Typography
                   variant="body2"
@@ -367,7 +340,6 @@ function ControlUsuario() {
                 >
                   Total usuarios
                 </Typography>
-
                 <Typography
                   variant="h5"
                   sx={{
@@ -380,7 +352,6 @@ function ControlUsuario() {
             </Stack>
           </CardContent>
         </Card>
-
         <Card variant="outlined">
           <CardContent>
             <Stack
@@ -391,7 +362,6 @@ function ControlUsuario() {
               }}
             >
               <CheckCircleRoundedIcon color="success" />
-
               <Box>
                 <Typography
                   variant="body2"
@@ -399,7 +369,6 @@ function ControlUsuario() {
                 >
                   Usuarios activos
                 </Typography>
-
                 <Typography
                   variant="h5"
                   sx={{
@@ -412,7 +381,6 @@ function ControlUsuario() {
             </Stack>
           </CardContent>
         </Card>
-
         <Card variant="outlined">
           <CardContent>
             <Stack
@@ -423,7 +391,6 @@ function ControlUsuario() {
               }}
             >
               <PersonOffRoundedIcon color="disabled" />
-
               <Box>
                 <Typography
                   variant="body2"
@@ -431,7 +398,6 @@ function ControlUsuario() {
                 >
                   Usuarios inactivos
                 </Typography>
-
                 <Typography
                   variant="h5"
                   sx={{
@@ -444,7 +410,6 @@ function ControlUsuario() {
             </Stack>
           </CardContent>
         </Card>
-
         <Card variant="outlined">
           <CardContent>
             <Stack
@@ -455,7 +420,6 @@ function ControlUsuario() {
               }}
             >
               <AdminPanelSettingsRoundedIcon color="primary" />
-
               <Box>
                 <Typography
                   variant="body2"
@@ -463,7 +427,6 @@ function ControlUsuario() {
                 >
                   Administradores
                 </Typography>
-
                 <Typography
                   variant="h5"
                   sx={{
@@ -477,7 +440,6 @@ function ControlUsuario() {
           </CardContent>
         </Card>
       </Box>
-
       <Card
         variant="outlined"
         sx={{
@@ -494,7 +456,6 @@ function ControlUsuario() {
           >
             Buscar y filtrar
           </Typography>
-
           <Box
             sx={{
               display: 'grid',
@@ -527,12 +488,10 @@ function ControlUsuario() {
                 },
               }}
             />
-
             <FormControl fullWidth>
               <InputLabel id="filtro-rol-label">
                 Rol
               </InputLabel>
-
               <Select
                 labelId="filtro-rol-label"
                 label="Rol"
@@ -544,7 +503,6 @@ function ControlUsuario() {
                 <MenuItem value="">
                   Todos
                 </MenuItem>
-
                 {roles.map((rol) => (
                   <MenuItem
                     key={rol.id}
@@ -555,12 +513,10 @@ function ControlUsuario() {
                 ))}
               </Select>
             </FormControl>
-
             <FormControl fullWidth>
               <InputLabel id="filtro-sucursal-label">
                 Sucursal
               </InputLabel>
-
               <Select
                 labelId="filtro-sucursal-label"
                 label="Sucursal"
@@ -572,7 +528,6 @@ function ControlUsuario() {
                 <MenuItem value="">
                   Todas
                 </MenuItem>
-
                 {sucursales.map((sucursal) => (
                   <MenuItem
                     key={sucursal.id_sucursal}
@@ -583,12 +538,10 @@ function ControlUsuario() {
                 ))}
               </Select>
             </FormControl>
-
             <FormControl fullWidth>
               <InputLabel id="filtro-estado-label">
                 Estado
               </InputLabel>
-
               <Select
                 labelId="filtro-estado-label"
                 label="Estado"
@@ -600,18 +553,15 @@ function ControlUsuario() {
                 <MenuItem value="">
                   Todos
                 </MenuItem>
-
                 <MenuItem value="ACTIVO">
                   Activos
                 </MenuItem>
-
                 <MenuItem value="INACTIVO">
                   Inactivos
                 </MenuItem>
               </Select>
             </FormControl>
           </Box>
-
           {(busqueda ||
             filtroRol ||
             filtroSucursal ||
@@ -630,7 +580,6 @@ function ControlUsuario() {
           )}
         </CardContent>
       </Card>
-
       <Box
         sx={{
           mb: 1.5,
@@ -643,12 +592,10 @@ function ControlUsuario() {
           Mostrando {usuariosFiltrados.length} de {usuarios.length} usuarios
         </Typography>
       </Box>
-
       <UsuariosTable
         usuarios={usuariosFiltrados}
         onEditarUsuario={abrirEditarUsuario}
       />
-
       <Dialog
         open={dialogoAbierto}
         onClose={cerrarDialogo}
@@ -660,19 +607,19 @@ function ControlUsuario() {
             ? 'Administrar usuario'
             : 'Registrar usuario'}
         </DialogTitle>
-
         <DialogContent dividers>
           <UsuarioForm
             usuario={usuarioEditando}
             roles={roles}
             sucursales={sucursales}
+            empleados={empleados}
+            usuarios={usuarios}
             guardando={guardando}
             onGuardar={guardarUsuario}
             onCancelar={cerrarDialogo}
           />
         </DialogContent>
       </Dialog>
-
       <Snackbar
         open={Boolean(mensaje)}
         autoHideDuration={5000}
