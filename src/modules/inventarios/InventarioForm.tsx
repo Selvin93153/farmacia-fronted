@@ -24,7 +24,6 @@ import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
 import MedicationRoundedIcon from '@mui/icons-material/MedicationRounded'
 
 import type { Medicamento } from '../medicamentos/medicamentosService'
-import type { Sucursal } from '../sucursales/sucursalesService'
 
 import type {
   ActualizarInventario,
@@ -32,11 +31,19 @@ import type {
   Inventario,
 } from './inventariosService'
 
+export interface SucursalOpcion {
+  id_sucursal: number
+  codigo: string
+  nombre: string
+  estado?: string
+}
+
 interface InventarioFormProps {
   abierto: boolean
   inventario: Inventario | null
   inventarios: Inventario[]
-  sucursales: Sucursal[]
+  sucursales: SucursalOpcion[]
+  idSucursalAsignada: number | null
   medicamentos: Medicamento[]
   guardando: boolean
   error: string
@@ -65,6 +72,7 @@ function InventarioForm({
   inventario,
   inventarios,
   sucursales,
+  idSucursalAsignada,
   medicamentos,
   guardando,
   error,
@@ -77,6 +85,10 @@ function InventarioForm({
   const [errorFormulario, setErrorFormulario] = useState('')
 
   const editando = inventario !== null
+
+  const sucursalAsignada = sucursales.find(
+    (sucursal) => sucursal.id_sucursal === idSucursalAsignada,
+  )
 
   useEffect(() => {
     if (!abierto) {
@@ -91,11 +103,14 @@ function InventarioForm({
         stock_minimo: inventario.stock_minimo.toString(),
       })
     } else {
-      setFormulario(formularioInicial)
+      setFormulario({
+        ...formularioInicial,
+        id_sucursal: idSucursalAsignada === null ? '' : idSucursalAsignada.toString(),
+      })
     }
 
     setErrorFormulario('')
-  }, [abierto, inventario])
+  }, [abierto, inventario, idSucursalAsignada])
 
   const medicamentosDisponibles = useMemo(() => {
     if (!formulario.id_sucursal) {
@@ -159,7 +174,9 @@ function InventarioForm({
       return
     }
 
-    if (!formulario.id_sucursal) {
+    const idSucursal = idSucursalAsignada ?? Number(formulario.id_sucursal)
+
+    if (!Number.isInteger(idSucursal) || idSucursal < 1) {
       setErrorFormulario('Debes seleccionar una sucursal.')
       return
     }
@@ -183,7 +200,7 @@ function InventarioForm({
     }
 
     const datos: CrearInventario = {
-      id_sucursal: Number(formulario.id_sucursal),
+      id_sucursal: idSucursal,
       id_medicamento: Number(formulario.id_medicamento),
       stock_actual: stockActual,
       stock_minimo: stockMinimo,
@@ -319,32 +336,41 @@ function InventarioForm({
                   </Typography>
                 </Stack>
 
-                <FormControl fullWidth required>
-                  <InputLabel id="sucursal-inventario-label">
-                    Sucursal
-                  </InputLabel>
-
-                  <Select
-                    labelId="sucursal-inventario-label"
-                    label="Sucursal"
-                    value={formulario.id_sucursal}
-                    onChange={(event) =>
-                      cambiarSucursal(event.target.value)
+                {idSucursalAsignada !== null ? (
+                  <TextField
+                    label="Sucursal asignada"
+                    value={
+                      sucursalAsignada
+                        ? `${sucursalAsignada.codigo} - ${sucursalAsignada.nombre}`
+                        : `Sucursal #${idSucursalAsignada}`
                     }
-                  >
-                    {sucursales.map((sucursal) => (
-                      <MenuItem
-                        key={sucursal.id_sucursal}
-                        value={sucursal.id_sucursal.toString()}
-                      >
-                        {sucursal.codigo} - {sucursal.nombre}
-                        {sucursal.estado !== 'ACTIVA'
-                          ? ' (INACTIVA)'
-                          : ''}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    fullWidth
+                    disabled
+                  />
+                ) : (
+                  <FormControl fullWidth required>
+                    <InputLabel id="sucursal-inventario-label">
+                      Sucursal
+                    </InputLabel>
+
+                    <Select
+                      labelId="sucursal-inventario-label"
+                      label="Sucursal"
+                      value={formulario.id_sucursal}
+                      onChange={(event) => cambiarSucursal(event.target.value)}
+                    >
+                      {sucursales.map((sucursal) => (
+                        <MenuItem
+                          key={sucursal.id_sucursal}
+                          value={sucursal.id_sucursal.toString()}
+                        >
+                          {sucursal.codigo} - {sucursal.nombre}
+                          {sucursal.estado !== 'ACTIVA' ? ' (INACTIVA)' : ''}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                )}
               </Box>
 
               <Divider />
@@ -397,8 +423,9 @@ function InventarioForm({
                 {formulario.id_sucursal &&
                   medicamentosDisponibles.length === 0 && (
                     <Alert severity="info" sx={{ mt: 2 }}>
-                      Todos los medicamentos disponibles ya tienen un inventario
-                      registrado en esta sucursal.
+                      {medicamentos.length === 0
+                        ? 'No hay medicamentos registrados en el catálogo.'
+                        : 'Todos los medicamentos del catálogo ya tienen inventario registrado en esta sucursal. Puedes configurar el stock mínimo desde la tabla o registrar entradas y salidas desde Movimientos de Inventario.'}
                     </Alert>
                   )}
               </Box>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   Alert,
@@ -20,10 +20,15 @@ import {
 } from '@mui/material'
 
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
+
 import MedicationRoundedIcon from '@mui/icons-material/MedicationRounded'
+
 import NotesRoundedIcon from '@mui/icons-material/NotesRounded'
+
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
+
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 
 import type { Inventario } from '../inventarios/inventariosService'
@@ -33,10 +38,11 @@ import type {
   MotivoMovimiento,
   TipoMovimiento,
 } from './movimientosInventarioService'
-
 interface MovimientoInventarioFormProps {
   abierto: boolean
   inventarios: Inventario[]
+  idSucursalAsignada: number | null
+  nombreSucursalAsignada: string
   guardando: boolean
   error: string
   onCerrar: () => void
@@ -66,23 +72,35 @@ const formularioInicial: FormularioMovimiento = {
 function MovimientoInventarioForm({
   abierto,
   inventarios,
+  idSucursalAsignada,
+  nombreSucursalAsignada,
   guardando,
   error,
   onCerrar,
   onGuardar,
 }: MovimientoInventarioFormProps) {
+
   const [formulario, setFormulario] =
     useState<FormularioMovimiento>(formularioInicial)
 
   const [errorFormulario, setErrorFormulario] = useState('')
 
+  // Preselecciona la sucursal y reinicia los campos al abrir una operación.
+  useEffect(() => {
+    if (!abierto) return
+
+    setFormulario({
+      ...formularioInicial,
+      id_sucursal: idSucursalAsignada === null ? '' : String(idSucursalAsignada),
+    })
+    setErrorFormulario('')
+  }, [abierto, idSucursalAsignada])
+
   const sucursales = useMemo(() => {
     const mapaSucursales = new Map()
-
     inventarios.forEach((inventario) => {
       mapaSucursales.set(inventario.sucursal.id_sucursal, inventario.sucursal)
     })
-
     return Array.from(mapaSucursales.values())
   }, [inventarios])
 
@@ -90,7 +108,6 @@ function MovimientoInventarioForm({
     if (!formulario.id_sucursal) {
       return []
     }
-
     return inventarios.filter(
       (inventario) =>
         inventario.id_sucursal === Number(formulario.id_sucursal),
@@ -101,7 +118,6 @@ function MovimientoInventarioForm({
     if (!formulario.id_inventario) {
       return null
     }
-
     return (
       inventarios.find(
         (inventario) =>
@@ -140,6 +156,8 @@ function MovimientoInventarioForm({
   }
 
   const cambiarSucursal = (idSucursal: string) => {
+    if (idSucursalAsignada !== null) return
+
     setFormulario((actual) => ({
       ...actual,
       id_sucursal: idSucursal,
@@ -158,7 +176,6 @@ function MovimientoInventarioForm({
     if (guardando) {
       return
     }
-
     setFormulario(formularioInicial)
     setErrorFormulario('')
     onCerrar()
@@ -166,52 +183,48 @@ function MovimientoInventarioForm({
 
   const manejarGuardar = async () => {
     setErrorFormulario('')
-
     if (!formulario.id_sucursal) {
       setErrorFormulario('Debes seleccionar una sucursal.')
       return
     }
-
-    if (!formulario.id_inventario) {
-      setErrorFormulario('Debes seleccionar un medicamento.')
+    if (idSucursalAsignada !== null && Number(formulario.id_sucursal) !== idSucursalAsignada) {
+      setErrorFormulario('Solo puedes registrar movimientos en tu sucursal.')
       return
     }
 
+    if (!formulario.id_inventario || !inventarioSeleccionado ||
+        inventarioSeleccionado.id_sucursal !== Number(formulario.id_sucursal)) {
+      setErrorFormulario('Debes seleccionar un medicamento válido de la sucursal.')
+      return
+    }
     if (!cantidadValida) {
       setErrorFormulario(
         'La cantidad debe ser un número entero mayor que cero.',
       )
       return
     }
-
     if (salidaSinStock) {
       setErrorFormulario(
         'No hay suficiente stock disponible para realizar esta salida.',
       )
       return
     }
-
     const datos: CrearMovimientoInventario = {
       id_inventario: Number(formulario.id_inventario),
       tipo_movimiento: formulario.tipo_movimiento,
       motivo: formulario.motivo,
       cantidad,
     }
-
     const referencia = formulario.referencia.trim()
     const observacion = formulario.observacion.trim()
-
     if (referencia) {
       datos.referencia = referencia
     }
-
     if (observacion) {
       datos.observacion = observacion
     }
-
     await onGuardar(datos)
   }
-
   return (
     <Dialog
       open={abierto}
@@ -222,13 +235,11 @@ function MovimientoInventarioForm({
       <DialogTitle sx={{ fontWeight: 700 }}>
         Registrar movimiento de inventario
       </DialogTitle>
-
       <DialogContent dividers>
         <Stack spacing={3}>
           {(error || errorFormulario) && (
             <Alert severity="error">{errorFormulario || error}</Alert>
           )}
-
           <Box>
             <Stack
               direction="row"
@@ -236,37 +247,40 @@ function MovimientoInventarioForm({
               sx={{ alignItems: 'center', mb: 2 }}
             >
               <BusinessRoundedIcon color="primary" />
-
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Ubicación del inventario
               </Typography>
             </Stack>
-
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <FormControl fullWidth required>
-                <InputLabel id="sucursal-movimiento-label">
-                  Sucursal
-                </InputLabel>
-
-                <Select
-                  labelId="sucursal-movimiento-label"
+              {idSucursalAsignada !== null ? (
+                <TextField
                   label="Sucursal"
-                  value={formulario.id_sucursal}
-                  onChange={(event) =>
-                    cambiarSucursal(event.target.value)
-                  }
-                >
-                  {sucursales.map((sucursal) => (
-                    <MenuItem
-                      key={sucursal.id_sucursal}
-                      value={sucursal.id_sucursal.toString()}
-                    >
-                      {sucursal.codigo} - {sucursal.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
+                  value={nombreSucursalAsignada || `Sucursal #${idSucursalAsignada}`}
+                  fullWidth
+                  disabled
+                />
+              ) : (
+                <FormControl fullWidth required>
+                  <InputLabel id="sucursal-movimiento-label">
+                    Sucursal
+                  </InputLabel>
+                  <Select
+                    labelId="sucursal-movimiento-label"
+                    label="Sucursal"
+                    value={formulario.id_sucursal}
+                    onChange={(event) => cambiarSucursal(event.target.value)}
+                  >
+                    {sucursales.map((sucursal) => (
+                      <MenuItem
+                        key={sucursal.id_sucursal}
+                        value={sucursal.id_sucursal.toString()}
+                      >
+                        {sucursal.codigo} - {sucursal.nombre}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <FormControl
                 fullWidth
                 required
@@ -275,7 +289,6 @@ function MovimientoInventarioForm({
                 <InputLabel id="inventario-movimiento-label">
                   Medicamento
                 </InputLabel>
-
                 <Select
                   labelId="inventario-movimiento-label"
                   label="Medicamento"
@@ -297,8 +310,12 @@ function MovimientoInventarioForm({
                 </Select>
               </FormControl>
             </Stack>
+            {formulario.id_sucursal && inventariosSucursal.length === 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Esta sucursal no tiene medicamentos registrados en inventario.
+              </Alert>
+            )}
           </Box>
-
           {inventarioSeleccionado && (
             <Box
               sx={{
@@ -322,38 +339,31 @@ function MovimientoInventarioForm({
                   sx={{ alignItems: 'center' }}
                 >
                   <MedicationRoundedIcon color="primary" />
-
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       Medicamento seleccionado
                     </Typography>
-
                     <Typography sx={{ fontWeight: 700 }}>
                       {inventarioSeleccionado.medicamento.nombre}
                     </Typography>
-
                     <Typography variant="body2" color="text.secondary">
                       {inventarioSeleccionado.medicamento.concentracion} ·{' '}
                       {inventarioSeleccionado.medicamento.presentacion}
                     </Typography>
                   </Box>
                 </Stack>
-
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Stock disponible
                   </Typography>
-
                   <Typography variant="h5" sx={{ fontWeight: 800 }}>
                     {inventarioSeleccionado.stock_actual}
                   </Typography>
                 </Box>
-
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Stock mínimo
                   </Typography>
-
                   <Typography variant="h5" sx={{ fontWeight: 800 }}>
                     {inventarioSeleccionado.stock_minimo}
                   </Typography>
@@ -361,9 +371,7 @@ function MovimientoInventarioForm({
               </Stack>
             </Box>
           )}
-
           <Divider />
-
           <Box>
             <Stack
               direction="row"
@@ -371,19 +379,16 @@ function MovimientoInventarioForm({
               sx={{ alignItems: 'center', mb: 2 }}
             >
               <InventoryRoundedIcon color="primary" />
-
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Movimiento
               </Typography>
             </Stack>
-
             <Stack spacing={2}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
                 <FormControl fullWidth required>
                   <InputLabel id="tipo-movimiento-label">
                     Tipo de movimiento
                   </InputLabel>
-
                   <Select
                     labelId="tipo-movimiento-label"
                     label="Tipo de movimiento"
@@ -398,12 +403,10 @@ function MovimientoInventarioForm({
                     <MenuItem value="SALIDA">Salida</MenuItem>
                   </Select>
                 </FormControl>
-
                 <FormControl fullWidth required>
                   <InputLabel id="motivo-movimiento-label">
                     Motivo
                   </InputLabel>
-
                   <Select
                     labelId="motivo-movimiento-label"
                     label="Motivo"
@@ -420,7 +423,6 @@ function MovimientoInventarioForm({
                   </Select>
                 </FormControl>
               </Stack>
-
               <TextField
                 label="Cantidad"
                 type="number"
@@ -439,11 +441,9 @@ function MovimientoInventarioForm({
               />
             </Stack>
           </Box>
-
           {inventarioSeleccionado && cantidadValida && (
             <>
               <Divider />
-
               <Box>
                 <Typography
                   variant="h6"
@@ -454,7 +454,6 @@ function MovimientoInventarioForm({
                 >
                   Proyección del movimiento
                 </Typography>
-
                 <Box
                   sx={{
                     display: 'grid',
@@ -469,7 +468,6 @@ function MovimientoInventarioForm({
                     titulo="Stock actual"
                     valor={inventarioSeleccionado.stock_actual}
                   />
-
                   <ResumenStock
                     titulo={
                       formulario.tipo_movimiento === 'ENTRADA'
@@ -485,14 +483,12 @@ function MovimientoInventarioForm({
                       )
                     }
                   />
-
                   <ResumenStock
                     titulo="Stock resultante"
                     valor={stockProyectado}
                     error={salidaSinStock}
                   />
                 </Box>
-
                 {salidaSinStock && (
                   <Alert severity="error" sx={{ mt: 2 }}>
                     Esta salida dejaría el inventario con stock negativo. Solo
@@ -500,7 +496,6 @@ function MovimientoInventarioForm({
                     disponibles.
                   </Alert>
                 )}
-
                 {!salidaSinStock &&
                   stockProyectado <= inventarioSeleccionado.stock_minimo && (
                     <Alert severity="warning" sx={{ mt: 2 }}>
@@ -511,9 +506,7 @@ function MovimientoInventarioForm({
               </Box>
             </>
           )}
-
           <Divider />
-
           <Box>
             <Stack
               direction="row"
@@ -521,12 +514,10 @@ function MovimientoInventarioForm({
               sx={{ alignItems: 'center', mb: 2 }}
             >
               <NotesRoundedIcon color="primary" />
-
               <Typography variant="h6" sx={{ fontWeight: 700 }}>
                 Trazabilidad
               </Typography>
             </Stack>
-
             <Stack spacing={2}>
               <TextField
                 label="Referencia"
@@ -542,7 +533,6 @@ function MovimientoInventarioForm({
                   },
                 }}
               />
-
               <TextField
                 label="Observación"
                 placeholder="Información adicional sobre el movimiento"
@@ -563,12 +553,10 @@ function MovimientoInventarioForm({
           </Box>
         </Stack>
       </DialogContent>
-
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={cerrarFormulario} disabled={guardando}>
           Cancelar
         </Button>
-
         <Button
           variant="contained"
           onClick={manejarGuardar}
@@ -623,7 +611,6 @@ function ResumenStock({
           <Typography variant="body2" color="text.secondary">
             {titulo}
           </Typography>
-
           <Typography
             variant="h5"
             sx={{
@@ -635,7 +622,6 @@ function ResumenStock({
             {valor}
           </Typography>
         </Box>
-
         {icono}
       </Stack>
     </Box>

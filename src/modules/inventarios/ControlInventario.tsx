@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import axios from 'axios'
 
@@ -28,23 +28,23 @@ import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded'
 
+import { obtenerSesion } from '../auth/authService'
+
 import {
   obtenerMedicamentos,
   type Medicamento,
 } from '../medicamentos/medicamentosService'
 
-import {
-  obtenerSucursales,
-  type Sucursal,
-} from '../sucursales/sucursalesService'
+import { obtenerSucursales } from '../sucursales/sucursalesService'
 
-import InventarioForm from './InventarioForm'
+import InventarioForm, { type SucursalOpcion } from './InventarioForm'
 import InventariosTable from './InventariosTable'
 
 import {
   actualizarInventario,
   crearInventario,
   obtenerInventarios,
+  obtenerInventariosMiSucursal,
   type ActualizarInventario,
   type CrearInventario,
   type Inventario,
@@ -54,8 +54,10 @@ type FiltroStock = 'TODOS' | 'NORMAL' | 'BAJO' | 'SIN_STOCK'
 
 function ControlInventario() {
   const [inventarios, setInventarios] = useState<Inventario[]>([])
-  const [sucursales, setSucursales] = useState<Sucursal[]>([])
+  const [sucursales, setSucursales] = useState<SucursalOpcion[]>([])
   const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
+  const [idSucursalAsignada, setIdSucursalAsignada] = useState<number | null>(null)
+  const [sesionVerificada, setSesionVerificada] = useState(false)
 
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
@@ -101,39 +103,68 @@ function ControlInventario() {
     return mensajePredeterminado
   }
 
-  const cargarDatos = async () => {
+  // Carga inventarios y aplica el alcance de la sucursal autenticada.
+  const cargarDatos = useCallback(async () => {
     setCargando(true)
     setError('')
+    setSesionVerificada(false)
 
     try {
-      const [
-        inventariosRecibidos,
-        sucursalesRecibidas,
-        medicamentosRecibidos,
-      ] = await Promise.all([
-        obtenerInventarios(),
-        obtenerSucursales(),
-        obtenerMedicamentos(),
-      ])
+      const sesion = await obtenerSesion()
+      const idSucursal = sesion.id_sucursal
 
-      setInventarios(inventariosRecibidos)
-      setSucursales(sucursalesRecibidas)
+      if (idSucursal !== null && (!Number.isInteger(idSucursal) || idSucursal < 1)) {
+        throw new Error('No se pudo determinar la sucursal del usuario.')
+      }
+
+      const [inventariosRecibidos, medicamentosRecibidos, sucursalesRecibidas] =
+        await Promise.all([
+          idSucursal === null ? obtenerInventarios() : obtenerInventariosMiSucursal(),
+          obtenerMedicamentos(),
+          idSucursal === null ? obtenerSucursales() : Promise.resolve(null),
+        ])
+
+      if (idSucursal === null) {
+        setInventarios(inventariosRecibidos)
+        setSucursales(sucursalesRecibidas ?? [])
+      } else {
+        // La API ya devuelve solo los inventarios de la sucursal autenticada.
+        // Usa la sesión como respaldo si la sucursal todavía no tiene inventarios.
+        const sucursalSesion = sesion.sucursal
+        const sucursalInventario = inventariosRecibidos[0]?.sucursal
+        const sucursalAsignada: SucursalOpcion = {
+          id_sucursal: idSucursal,
+          codigo: sucursalSesion?.codigo ?? sucursalInventario?.codigo ?? '',
+          nombre:
+            sucursalSesion?.nombre ??
+            sucursalInventario?.nombre ??
+            `Sucursal #${idSucursal}`,
+        }
+
+        setInventarios(inventariosRecibidos)
+        setSucursales([sucursalAsignada])
+      }
+
       setMedicamentos(medicamentosRecibidos)
+      setIdSucursalAsignada(idSucursal)
+      setFiltroSucursal('TODAS')
+      setSesionVerificada(true)
     } catch (error: unknown) {
-      setError(
-        obtenerMensajeError(
-          error,
-          'Ocurrió un error al cargar la información de inventario.',
-        ),
-      )
+      // Impide mostrar registros anteriores si falla la sesión o la consulta.
+      setInventarios([])
+      setSucursales([])
+      setMedicamentos([])
+      setIdSucursalAsignada(null)
+      setSesionVerificada(false)
+      setError(obtenerMensajeError(error, 'Ocurrió un error al cargar la información de inventario.'))
     } finally {
       setCargando(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    cargarDatos()
-  }, [])
+    void cargarDatos()
+  }, [cargarDatos])
 
   const obtenerNivelStock = (inventario: Inventario): FiltroStock => {
     if (inventario.stock_actual === 0) {
@@ -153,9 +184,10 @@ function ControlInventario() {
     return inventarios.filter((inventario) => {
       const nivel = obtenerNivelStock(inventario)
 
-      const coincideSucursal =
-        filtroSucursal === 'TODAS' ||
-        inventario.id_sucursal === Number(filtroSucursal)
+      const coincideSucursal = idSucursalAsignada !== null
+        ? inventario.id_sucursal === idSucursalAsignada
+        : filtroSucursal === 'TODAS' ||
+          inventario.id_sucursal === Number(filtroSucursal)
 
       const coincideStock =
         filtroStock === 'TODOS' || nivel === filtroStock
@@ -175,7 +207,7 @@ function ControlInventario() {
 
       return coincideSucursal && coincideStock && coincideBusqueda
     })
-  }, [inventarios, busqueda, filtroSucursal, filtroStock])
+  }, [inventarios, busqueda, filtroSucursal, filtroStock, idSucursalAsignada])
 
   const totalRegistros = inventarios.length
 
@@ -195,12 +227,20 @@ function ControlInventario() {
   ).length
 
   const abrirNuevoInventario = () => {
+    if (!sesionVerificada || cargando || error) return
     setInventarioEditando(null)
     setErrorFormulario('')
     setFormularioAbierto(true)
   }
 
   const abrirEditarInventario = (inventario: Inventario) => {
+    if (!sesionVerificada || cargando) return
+
+    if (idSucursalAsignada !== null && inventario.id_sucursal !== idSucursalAsignada) {
+      setError('No puedes administrar inventarios de otra sucursal.')
+      return
+    }
+
     setInventarioEditando(inventario)
     setErrorFormulario('')
     setFormularioAbierto(true)
@@ -219,17 +259,33 @@ function ControlInventario() {
   const guardarInventario = async (
     datos: CrearInventario | ActualizarInventario,
   ) => {
+    if (!sesionVerificada) {
+      setErrorFormulario('No se ha podido validar la sesión del usuario.')
+      return
+    }
+
     setGuardando(true)
     setErrorFormulario('')
 
     try {
       if (inventarioEditando) {
+        if (
+          idSucursalAsignada !== null &&
+          inventarioEditando.id_sucursal !== idSucursalAsignada
+        ) {
+          throw new Error('No puedes editar inventarios de otra sucursal.')
+        }
+
         await actualizarInventario(
           inventarioEditando.id_inventario,
           datos as ActualizarInventario,
         )
       } else {
-        await crearInventario(datos as CrearInventario)
+        const datosCreacion = datos as CrearInventario
+        await crearInventario({
+          ...datosCreacion,
+          id_sucursal: idSucursalAsignada ?? datosCreacion.id_sucursal,
+        })
       }
 
       setFormularioAbierto(false)
@@ -269,7 +325,9 @@ function ControlInventario() {
           </Typography>
 
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Consulta y controla las existencias de medicamentos por sucursal.
+            {idSucursalAsignada === null
+              ? 'Consulta y controla las existencias de medicamentos por sucursal.'
+              : `Consulta y controla las existencias de ${sucursales[0]?.nombre ?? 'tu sucursal'}.`}
           </Typography>
         </Box>
 
@@ -288,6 +346,7 @@ function ControlInventario() {
             variant="contained"
             startIcon={<AddRoundedIcon />}
             onClick={abrirNuevoInventario}
+            disabled={cargando || !sesionVerificada || Boolean(error)}
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Registrar inventario
@@ -367,31 +426,31 @@ function ControlInventario() {
               }}
             />
 
-            <FormControl sx={{ minWidth: 220 }}>
-              <InputLabel id="filtro-sucursal-inventario-label">
-                Sucursal
-              </InputLabel>
+            {idSucursalAsignada === null && (
+              <FormControl sx={{ minWidth: 220 }}>
+                <InputLabel id="filtro-sucursal-inventario-label">
+                  Sucursal
+                </InputLabel>
 
-              <Select
-                labelId="filtro-sucursal-inventario-label"
-                label="Sucursal"
-                value={filtroSucursal}
-                onChange={(event) =>
-                  setFiltroSucursal(event.target.value)
-                }
-              >
-                <MenuItem value="TODAS">Todas las sucursales</MenuItem>
+                <Select
+                  labelId="filtro-sucursal-inventario-label"
+                  label="Sucursal"
+                  value={filtroSucursal}
+                  onChange={(event) => setFiltroSucursal(event.target.value)}
+                >
+                  <MenuItem value="TODAS">Todas las sucursales</MenuItem>
 
-                {sucursales.map((sucursal) => (
-                  <MenuItem
-                    key={sucursal.id_sucursal}
-                    value={sucursal.id_sucursal.toString()}
-                  >
-                    {sucursal.codigo} - {sucursal.nombre}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+                  {sucursales.map((sucursal) => (
+                    <MenuItem
+                      key={sucursal.id_sucursal}
+                      value={sucursal.id_sucursal.toString()}
+                    >
+                      {sucursal.codigo} - {sucursal.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
 
             <FormControl sx={{ minWidth: 190 }}>
               <InputLabel id="filtro-stock-inventario-label">
@@ -479,6 +538,7 @@ function ControlInventario() {
         inventario={inventarioEditando}
         inventarios={inventarios}
         sucursales={sucursales}
+        idSucursalAsignada={idSucursalAsignada}
         medicamentos={medicamentos}
         guardando={guardando}
         error={errorFormulario}

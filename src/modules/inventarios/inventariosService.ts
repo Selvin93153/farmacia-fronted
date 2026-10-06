@@ -25,8 +25,22 @@ export interface ActualizarInventario {
   stock_minimo?: number
 }
 
+// Obtiene los inventarios para usuarios con acceso general.
 export async function obtenerInventarios(): Promise<Inventario[]> {
   const respuesta = await api.get<Inventario[]>('/inventarios')
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error(
+      'El backend respondió, pero no devolvió una lista de inventarios.',
+    )
+  }
+
+  return respuesta.data
+}
+
+// Obtiene únicamente los inventarios de la sucursal de la sesión autenticada.
+export async function obtenerInventariosMiSucursal(): Promise<Inventario[]> {
+  const respuesta = await api.get<Inventario[]>('/inventarios/mi-sucursal')
 
   if (!Array.isArray(respuesta.data)) {
     throw new Error(

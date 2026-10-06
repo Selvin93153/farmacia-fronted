@@ -50,11 +50,27 @@ export interface CrearMovimientoInventario {
   observacion?: string
 }
 
-export async function obtenerMovimientosInventario(): Promise<
-  MovimientoInventario[]
-> {
+// Consulta general de los movimientos de inventario.
+export async function obtenerMovimientosInventario(): Promise<MovimientoInventario[]> {
+
   const respuesta = await api.get<MovimientoInventario[]>(
     '/movimientos-inventario',
+  )
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error(
+      'El backend respondió, pero no devolvió una lista de movimientos.',
+    )
+  }
+
+  return respuesta.data
+}
+
+// Obtiene exclusivamente los movimientos de la sucursal de la sesión activa.
+export async function obtenerMovimientosMiSucursal(): Promise<MovimientoInventario[]> {
+
+  const respuesta = await api.get<MovimientoInventario[]>(
+    '/movimientos-inventario/mi-sucursal',
   )
 
   if (!Array.isArray(respuesta.data)) {
@@ -69,6 +85,7 @@ export async function obtenerMovimientosInventario(): Promise<
 export async function obtenerMovimientoInventario(
   id: number,
 ): Promise<MovimientoInventario> {
+
   const respuesta = await api.get<MovimientoInventario>(
     `/movimientos-inventario/${id}`,
   )
@@ -79,6 +96,7 @@ export async function obtenerMovimientoInventario(
 export async function crearMovimientoInventario(
   datos: CrearMovimientoInventario,
 ): Promise<MovimientoInventario> {
+
   const respuesta = await api.post<MovimientoInventario>(
     '/movimientos-inventario',
     datos,

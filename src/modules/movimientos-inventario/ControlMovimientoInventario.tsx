@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+
 import type { ReactNode } from 'react'
+
 import axios from 'axios'
 
 import {
@@ -26,48 +28,72 @@ import {
 } from '@mui/material'
 
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+
 import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
+
 import InventoryRoundedIcon from '@mui/icons-material/InventoryRounded'
+
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
+
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+
 import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded'
+
 import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
+
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
+
+import { obtenerSesion } from '../auth/authService'
 
 import {
   obtenerInventarios,
+  obtenerInventariosMiSucursal,
   type Inventario,
 } from '../inventarios/inventariosService'
 
 import MovimientoInventarioForm from './MovimientoInventarioForm'
+
 import MovimientosInventarioTable from './MovimientosInventarioTable'
 
 import {
   crearMovimientoInventario,
   obtenerMovimientosInventario,
+  obtenerMovimientosMiSucursal,
   type CrearMovimientoInventario,
   type MotivoMovimiento,
   type MovimientoInventario,
   type TipoMovimiento,
 } from './movimientosInventarioService'
-
 type FiltroTipo = 'TODOS' | TipoMovimiento
 type FiltroMotivo = 'TODOS' | MotivoMovimiento
-
 function ControlMovimientoInventario() {
+
   const [movimientos, setMovimientos] = useState<MovimientoInventario[]>([])
+
   const [inventarios, setInventarios] = useState<Inventario[]>([])
 
+  const [idSucursalAsignada, setIdSucursalAsignada] = useState<number | null>(null)
+
+  const [nombreSucursalAsignada, setNombreSucursalAsignada] = useState('')
+
+  const [sesionVerificada, setSesionVerificada] = useState(false)
+
   const [cargando, setCargando] = useState(true)
+
   const [guardando, setGuardando] = useState(false)
 
   const [error, setError] = useState('')
+
   const [errorFormulario, setErrorFormulario] = useState('')
 
   const [busqueda, setBusqueda] = useState('')
+
   const [filtroSucursal, setFiltroSucursal] = useState('TODAS')
+
   const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>('TODOS')
+
   const [filtroMotivo, setFiltroMotivo] = useState<FiltroMotivo>('TODOS')
 
   const [formularioAbierto, setFormularioAbierto] = useState(false)
@@ -81,42 +107,60 @@ function ControlMovimientoInventario() {
   ) => {
     if (axios.isAxiosError(error)) {
       const mensajeBackend = error.response?.data?.message
-
       if (Array.isArray(mensajeBackend)) {
         return mensajeBackend.join(', ')
       }
-
       if (typeof mensajeBackend === 'string') {
         return mensajeBackend
       }
-
       if (error.response) {
         return `El backend respondió con error HTTP ${error.response.status}.`
       }
-
       return 'No se pudo establecer comunicación con el servidor.'
     }
-
     if (error instanceof Error) {
       return error.message
     }
-
     return mensajePredeterminado
   }
+  // Carga movimientos e inventarios según la sucursal de la sesión activa.
 
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setCargando(true)
     setError('')
+    setSesionVerificada(false)
+    setMovimientos([])
+    setInventarios([])
 
     try {
-      const [movimientosRecibidos, inventariosRecibidos] =
-        await Promise.all([
-          obtenerMovimientosInventario(),
-          obtenerInventarios(),
-        ])
+      const sesion = await obtenerSesion()
+      const idSucursal = sesion.id_sucursal
+
+      if (idSucursal !== null && (!Number.isInteger(idSucursal) || idSucursal < 1)) {
+        throw new Error('No se pudo determinar la sucursal del usuario.')
+      }
+
+      const [movimientosRecibidos, inventariosRecibidos] = await Promise.all([
+        idSucursal === null
+          ? obtenerMovimientosInventario()
+          : obtenerMovimientosMiSucursal(),
+        idSucursal === null
+          ? obtenerInventarios()
+          : obtenerInventariosMiSucursal(),
+      ])
 
       setMovimientos(movimientosRecibidos)
       setInventarios(inventariosRecibidos)
+      setIdSucursalAsignada(idSucursal)
+      setNombreSucursalAsignada(
+        sesion.sucursal
+          ? `${sesion.sucursal.codigo} - ${sesion.sucursal.nombre}`
+          : idSucursal === null
+            ? ''
+            : `Sucursal #${idSucursal}`,
+      )
+      setFiltroSucursal('TODAS')
+      setSesionVerificada(true)
     } catch (error: unknown) {
       setError(
         obtenerMensajeError(
@@ -127,40 +171,33 @@ function ControlMovimientoInventario() {
     } finally {
       setCargando(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    cargarDatos()
-  }, [])
+    void cargarDatos()
+  }, [cargarDatos])
 
   const sucursales = useMemo(() => {
     const mapaSucursales = new Map()
-
     inventarios.forEach((inventario) => {
       mapaSucursales.set(inventario.sucursal.id_sucursal, inventario.sucursal)
     })
-
     return Array.from(mapaSucursales.values())
   }, [inventarios])
 
   const movimientosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
-
     return movimientos.filter((movimiento) => {
       const coincideSucursal =
         filtroSucursal === 'TODAS' ||
         movimiento.inventario.id_sucursal === Number(filtroSucursal)
-
       const coincideTipo =
         filtroTipo === 'TODOS' ||
         movimiento.tipo_movimiento === filtroTipo
-
       const coincideMotivo =
         filtroMotivo === 'TODOS' || movimiento.motivo === filtroMotivo
-
       const nombreUsuario =
         `${movimiento.usuario.nombre} ${movimiento.usuario.apellido}`.toLowerCase()
-
       const coincideBusqueda =
         texto === '' ||
         movimiento.inventario.medicamento.codigo
@@ -181,7 +218,6 @@ function ControlMovimientoInventario() {
         nombreUsuario.includes(texto) ||
         movimiento.referencia?.toLowerCase().includes(texto) ||
         movimiento.observacion?.toLowerCase().includes(texto)
-
       return (
         coincideSucursal &&
         coincideTipo &&
@@ -221,7 +257,6 @@ function ControlMovimientoInventario() {
     if (guardando) {
       return
     }
-
     setFormularioAbierto(false)
     setErrorFormulario('')
   }
@@ -231,12 +266,9 @@ function ControlMovimientoInventario() {
   ) => {
     setGuardando(true)
     setErrorFormulario('')
-
     try {
       await crearMovimientoInventario(datos)
-
       setFormularioAbierto(false)
-
       await cargarDatos()
     } catch (error: unknown) {
       setErrorFormulario(
@@ -259,10 +291,9 @@ function ControlMovimientoInventario() {
 
   const hayFiltros =
     busqueda !== '' ||
-    filtroSucursal !== 'TODAS' ||
+    (idSucursalAsignada === null && filtroSucursal !== 'TODAS') ||
     filtroTipo !== 'TODOS' ||
     filtroMotivo !== 'TODOS'
-
   return (
     <Stack spacing={3}>
       <Stack
@@ -280,13 +311,11 @@ function ControlMovimientoInventario() {
           <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
             Movimientos de inventario
           </Typography>
-
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Registra y consulta las entradas y salidas de medicamentos de las
             sucursales.
           </Typography>
         </Box>
-
         <Stack direction="row" spacing={1.5}>
           <Button
             variant="outlined"
@@ -297,22 +326,19 @@ function ControlMovimientoInventario() {
           >
             Actualizar
           </Button>
-
           <Button
             variant="contained"
             startIcon={<AddRoundedIcon />}
             onClick={abrirFormulario}
+            disabled={cargando || !sesionVerificada}
             sx={{ textTransform: 'none', fontWeight: 600 }}
           >
             Registrar movimiento
           </Button>
         </Stack>
       </Stack>
-
       {cargando && <LinearProgress aria-label="Cargando movimientos" />}
-
       {error && <Alert severity="error">{error}</Alert>}
-
       <Box
         sx={{
           display: 'grid',
@@ -330,21 +356,18 @@ function ControlMovimientoInventario() {
           icono={<SwapVertRoundedIcon />}
           color="primary.main"
         />
-
         <ResumenMovimiento
           titulo="Entradas registradas"
           valor={totalEntradas}
           icono={<TrendingUpRoundedIcon />}
           color="success.main"
         />
-
         <ResumenMovimiento
           titulo="Salidas registradas"
           valor={totalSalidas}
           icono={<TrendingDownRoundedIcon />}
           color="error.main"
         />
-
         <ResumenMovimiento
           titulo="Unidades movilizadas"
           valor={unidadesMovidas}
@@ -352,7 +375,6 @@ function ControlMovimientoInventario() {
           color="secondary.main"
         />
       </Box>
-
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent>
           <Stack spacing={2}>
@@ -371,7 +393,6 @@ function ControlMovimientoInventario() {
                 },
               }}
             />
-
             <Stack
               direction={{ xs: 'column', lg: 'row' }}
               spacing={2}
@@ -382,37 +403,33 @@ function ControlMovimientoInventario() {
                 },
               }}
             >
-              <FormControl fullWidth>
-                <InputLabel id="filtro-sucursal-movimiento-label">
-                  Sucursal
-                </InputLabel>
-
-                <Select
-                  labelId="filtro-sucursal-movimiento-label"
-                  label="Sucursal"
-                  value={filtroSucursal}
-                  onChange={(event) =>
-                    setFiltroSucursal(event.target.value)
-                  }
-                >
-                  <MenuItem value="TODAS">Todas las sucursales</MenuItem>
-
-                  {sucursales.map((sucursal) => (
-                    <MenuItem
-                      key={sucursal.id_sucursal}
-                      value={sucursal.id_sucursal.toString()}
-                    >
-                      {sucursal.codigo} - {sucursal.nombre}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-
+              {idSucursalAsignada === null && (
+                <FormControl fullWidth>
+                  <InputLabel id="filtro-sucursal-movimiento-label">
+                    Sucursal
+                  </InputLabel>
+                  <Select
+                    labelId="filtro-sucursal-movimiento-label"
+                    label="Sucursal"
+                    value={filtroSucursal}
+                    onChange={(event) => setFiltroSucursal(event.target.value)}
+                  >
+                    <MenuItem value="TODAS">Todas las sucursales</MenuItem>
+                    {sucursales.map((sucursal) => (
+                      <MenuItem
+                        key={sucursal.id_sucursal}
+                        value={sucursal.id_sucursal.toString()}
+                      >
+                        {sucursal.codigo} - {sucursal.nombre}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <FormControl fullWidth>
                 <InputLabel id="filtro-tipo-movimiento-label">
                   Tipo
                 </InputLabel>
-
                 <Select
                   labelId="filtro-tipo-movimiento-label"
                   label="Tipo"
@@ -426,12 +443,10 @@ function ControlMovimientoInventario() {
                   <MenuItem value="SALIDA">Salidas</MenuItem>
                 </Select>
               </FormControl>
-
               <FormControl fullWidth>
                 <InputLabel id="filtro-motivo-movimiento-label">
                   Motivo
                 </InputLabel>
-
                 <Select
                   labelId="filtro-motivo-movimiento-label"
                   label="Motivo"
@@ -448,7 +463,6 @@ function ControlMovimientoInventario() {
                   <MenuItem value="DEVOLUCION">Devolución</MenuItem>
                 </Select>
               </FormControl>
-
               {hayFiltros && (
                 <Button
                   variant="text"
@@ -466,21 +480,18 @@ function ControlMovimientoInventario() {
           </Stack>
         </CardContent>
       </Card>
-
       {!cargando && movimientosFiltrados.length > 0 && (
         <>
           <Typography color="text.secondary">
             Mostrando {movimientosFiltrados.length} de {movimientos.length}{' '}
             movimientos.
           </Typography>
-
           <MovimientosInventarioTable
             movimientos={movimientosFiltrados}
             onVerDetalle={setMovimientoSeleccionado}
           />
         </>
       )}
-
       {!cargando && movimientosFiltrados.length === 0 && !error && (
         <Alert severity="info">
           {movimientos.length === 0
@@ -488,16 +499,16 @@ function ControlMovimientoInventario() {
             : 'No se encontraron movimientos que coincidan con los filtros aplicados.'}
         </Alert>
       )}
-
       <MovimientoInventarioForm
         abierto={formularioAbierto}
         inventarios={inventarios}
+        idSucursalAsignada={idSucursalAsignada}
+        nombreSucursalAsignada={nombreSucursalAsignada}
         guardando={guardando}
         error={errorFormulario}
         onCerrar={cerrarFormulario}
         onGuardar={guardarMovimiento}
       />
-
       <Dialog
         open={movimientoSeleccionado !== null}
         onClose={() => setMovimientoSeleccionado(null)}
@@ -507,7 +518,6 @@ function ControlMovimientoInventario() {
         <DialogTitle sx={{ fontWeight: 700 }}>
           Detalle del movimiento
         </DialogTitle>
-
         <DialogContent dividers>
           {movimientoSeleccionado && (
             <Stack spacing={3}>
@@ -532,20 +542,16 @@ function ControlMovimientoInventario() {
                   }
                   sx={{ fontWeight: 700 }}
                 />
-
                 <Chip
                   label={movimientoSeleccionado.motivo}
                   variant="outlined"
                   sx={{ fontWeight: 700 }}
                 />
-
                 <Typography variant="body2" color="text.secondary">
                   Movimiento #{movimientoSeleccionado.id_movimiento}
                 </Typography>
               </Stack>
-
               <Divider />
-
               <Box
                 sx={{
                   display: 'grid',
@@ -561,7 +567,6 @@ function ControlMovimientoInventario() {
                   titulo="Sucursal"
                   valor={movimientoSeleccionado.inventario.sucursal.nombre}
                 />
-
                 <DetalleMovimiento
                   icono={<InventoryRoundedIcon />}
                   titulo="Medicamento"
@@ -569,22 +574,18 @@ function ControlMovimientoInventario() {
                     movimientoSeleccionado.inventario.medicamento.nombre
                   }
                 />
-
                 <DetalleMovimiento
                   icono={<PersonRoundedIcon />}
                   titulo="Usuario responsable"
                   valor={`${movimientoSeleccionado.usuario.nombre} ${movimientoSeleccionado.usuario.apellido}`}
                 />
-
                 <DetalleMovimiento
                   icono={<SwapVertRoundedIcon />}
                   titulo="Cantidad"
                   valor={`${movimientoSeleccionado.cantidad} unidades`}
                 />
               </Box>
-
               <Divider />
-
               <Box>
                 <Typography
                   variant="h6"
@@ -595,7 +596,6 @@ function ControlMovimientoInventario() {
                 >
                   Cambio de existencias
                 </Typography>
-
                 <Box
                   sx={{
                     display: 'grid',
@@ -610,7 +610,6 @@ function ControlMovimientoInventario() {
                     titulo="Stock anterior"
                     valor={movimientoSeleccionado.stock_anterior}
                   />
-
                   <ResumenDetalle
                     titulo={
                       movimientoSeleccionado.tipo_movimiento === 'ENTRADA'
@@ -619,16 +618,13 @@ function ControlMovimientoInventario() {
                     }
                     valor={movimientoSeleccionado.cantidad}
                   />
-
                   <ResumenDetalle
                     titulo="Stock nuevo"
                     valor={movimientoSeleccionado.stock_nuevo}
                   />
                 </Box>
               </Box>
-
               <Divider />
-
               <Box
                 sx={{
                   display: 'grid',
@@ -643,30 +639,25 @@ function ControlMovimientoInventario() {
                   <Typography variant="body2" color="text.secondary">
                     Referencia
                   </Typography>
-
                   <Typography sx={{ mt: 0.5, fontWeight: 600 }}>
                     {movimientoSeleccionado.referencia ||
                       'Sin referencia registrada'}
                   </Typography>
                 </Box>
-
                 <Box>
                   <Typography variant="body2" color="text.secondary">
                     Rol del usuario
                   </Typography>
-
                   <Typography sx={{ mt: 0.5, fontWeight: 600 }}>
                     {movimientoSeleccionado.usuario.rol?.nombre ||
                       'Sin rol disponible'}
                   </Typography>
                 </Box>
               </Box>
-
               <Box>
                 <Typography variant="body2" color="text.secondary">
                   Observación
                 </Typography>
-
                 <Typography sx={{ mt: 0.5 }}>
                   {movimientoSeleccionado.observacion ||
                     'Sin observaciones registradas.'}
@@ -675,7 +666,6 @@ function ControlMovimientoInventario() {
             </Stack>
           )}
         </DialogContent>
-
         <DialogActions sx={{ px: 3, py: 2 }}>
           <Button onClick={() => setMovimientoSeleccionado(null)}>
             Cerrar
@@ -705,7 +695,6 @@ function ResumenMovimiento({
       sx={{
         borderRadius: 3,
         transition: '0.2s',
-
         '&:hover': {
           boxShadow: 3,
           transform: 'translateY(-2px)',
@@ -729,12 +718,10 @@ function ResumenMovimiento({
           >
             {icono}
           </Box>
-
           <Box>
             <Typography variant="body2" color="text.secondary">
               {titulo}
             </Typography>
-
             <Typography variant="h4" sx={{ fontWeight: 800 }}>
               {valor}
             </Typography>
@@ -773,12 +760,10 @@ function DetalleMovimiento({
       >
         {icono}
       </Box>
-
       <Box>
         <Typography variant="body2" color="text.secondary">
           {titulo}
         </Typography>
-
         <Typography sx={{ mt: 0.25, fontWeight: 600 }}>
           {valor}
         </Typography>
@@ -809,7 +794,6 @@ function ResumenDetalle({
       <Typography variant="body2" color="text.secondary">
         {titulo}
       </Typography>
-
       <Typography variant="h5" sx={{ mt: 0.5, fontWeight: 800 }}>
         {valor}
       </Typography>
