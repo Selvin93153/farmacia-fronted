@@ -10,6 +10,7 @@ import ShoppingCartRoundedIcon from '@mui/icons-material/ShoppingCartRounded'
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
 import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
+import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
 
 export type CodigoRol =
   | 'ADMIN_SISTEMA'
@@ -102,6 +103,15 @@ export const menuConfig: SeccionMenu[] = [
         texto: 'Movimientos de Inventario',
         ruta: '/app/movimientos-inventario',
         icono: SwapVertRoundedIcon,
+        roles: [
+          'ADMIN_SUCURSAL',
+          'INVENTARIO',
+        ],
+      },
+      {
+        texto: 'Activos Empresa',
+        ruta: '/app/activos-fijos',
+        icono: BusinessCenterRoundedIcon,
         roles: [
           'ADMIN_SUCURSAL',
           'INVENTARIO',
