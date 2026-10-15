@@ -11,6 +11,7 @@ import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
 import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
+import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
 
 export type CodigoRol =
   | 'ADMIN_SISTEMA'
@@ -117,6 +118,12 @@ export const menuConfig: SeccionMenu[] = [
           'INVENTARIO',
         ],
       },
+      {
+  texto: 'Auditoría de Efectivo',
+  ruta: '/app/auditoria-efectivo',
+  icono: AssessmentRoundedIcon,
+  roles: ['ADMIN_SISTEMA'],
+}
     ],
   },
   {
