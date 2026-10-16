@@ -22,6 +22,7 @@ import ControlActivoFijo from '../modules/activos-fijos/ControlActivoFijo'
 import ControlAuditoriaEfectivo from '../modules/auditoria-efectivo/ControlAuditoriaEfectivo'
 import ControlEntregas from '../modules/entregas/ControlEntregas'
 import ControlPedidos from '../modules/pedidos/ControlPedidos'
+import ControlTranslado from '../modules/traslados/ControlTraslados'
 
 import PrivateRoute from './PrivateRoute'
 
@@ -53,6 +54,7 @@ function AppRoutes() {
           <Route path="auditoria-efectivo" element={<ControlAuditoriaEfectivo />} />
           <Route path="entregas" element={<ControlEntregas />} />
           <Route path="pedidos" element={<ControlPedidos />} />
+          <Route path="traslados" element={<ControlTranslado />} />
         </Route>
       </Route>
 
