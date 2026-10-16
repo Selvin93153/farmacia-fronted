@@ -20,6 +20,8 @@ import ControlUsuario from '../modules/usuarios/ControlUsuario'
 import ControlMovimientoCaja from '../modules/movimientos-caja/ControlMovimientoCaja'
 import ControlActivoFijo from '../modules/activos-fijos/ControlActivoFijo'
 import ControlAuditoriaEfectivo from '../modules/auditoria-efectivo/ControlAuditoriaEfectivo'
+import ControlEntregas from '../modules/entregas/ControlEntregas'
+import ControlPedidos from '../modules/pedidos/ControlPedidos'
 
 import PrivateRoute from './PrivateRoute'
 
@@ -49,6 +51,8 @@ function AppRoutes() {
           <Route path="movimientos-caja" element={<ControlMovimientoCaja />} />
           <Route path="activos-fijos" element={<ControlActivoFijo />} />
           <Route path="auditoria-efectivo" element={<ControlAuditoriaEfectivo />} />
+          <Route path="entregas" element={<ControlEntregas />} />
+          <Route path="pedidos" element={<ControlPedidos />} />
         </Route>
       </Route>
 

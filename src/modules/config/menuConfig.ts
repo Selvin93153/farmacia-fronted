@@ -12,6 +12,8 @@ import SwapVertRoundedIcon from '@mui/icons-material/SwapVertRounded'
 import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
 import AssessmentRoundedIcon from '@mui/icons-material/AssessmentRounded'
+import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
+import AssignmentRoundedIcon from '@mui/icons-material/AssignmentRounded'
 
 export type CodigoRol =
   | 'ADMIN_SISTEMA'
@@ -65,6 +67,22 @@ export const menuConfig: SeccionMenu[] = [
         ],
       },
       {
+  texto: 'Entregas',
+  ruta: '/app/entregas',
+  icono: LocalShippingRoundedIcon,
+  roles: ['ADMIN_SISTEMA', 'ADMIN_SUCURSAL', 'TRABAJADOR_SUCURSAL'],
+},
+{
+  texto: 'Pedidos',
+  ruta: '/app/pedidos',
+  icono: AssignmentRoundedIcon,
+  roles: [
+    'ADMIN_SISTEMA',
+    'ADMIN_SUCURSAL',
+    'TRABAJADOR_SUCURSAL',
+  ],
+},
+      {
         texto: 'Cajas',
         ruta: '/app/cajas',
         icono: PointOfSaleRoundedIcon,
@@ -98,6 +116,7 @@ export const menuConfig: SeccionMenu[] = [
         roles: [
           'ADMIN_SUCURSAL',
           'INVENTARIO',
+           'TRABAJADOR_SUCURSAL',
         ],
       },
       {
