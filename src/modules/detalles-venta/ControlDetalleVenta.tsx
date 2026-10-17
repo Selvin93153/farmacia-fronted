@@ -31,11 +31,13 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
 import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
+import PrintRoundedIcon from '@mui/icons-material/PrintRounded'
 import ReceiptLongRoundedIcon from '@mui/icons-material/ReceiptLongRounded'
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
 
 import DetalleVentaForm from './DetalleVentaForm'
 import DetallesVentaTable from './DetallesVentaTable'
+import FacturaVentaDialog from './FacturaVentaDialog'
 
 import {
   actualizarDetalleVenta,
@@ -96,6 +98,7 @@ function ControlDetalleVenta() {
 
   const [confirmarFinalizacion, setConfirmarFinalizacion] = useState(false)
   const [confirmarCancelacion, setConfirmarCancelacion] = useState(false)
+  const [facturaAbierta, setFacturaAbierta] = useState(false)
 
   const ventaEditable = venta?.estado === 'BORRADOR'
 
@@ -539,6 +542,7 @@ function ControlDetalleVenta() {
       )
 
       setConfirmarFinalizacion(false)
+      setFacturaAbierta(true)
 
       setMensajeExito(
         'Venta completada correctamente.',
@@ -723,6 +727,20 @@ function ControlDetalleVenta() {
               Finalizar venta
             </Button>
           </Stack>
+        )}
+
+        {venta.estado === 'COMPLETADA' && (
+          <Button
+            variant="contained"
+            startIcon={<PrintRoundedIcon />}
+            onClick={() => setFacturaAbierta(true)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+            }}
+          >
+            Imprimir factura
+          </Button>
         )}
       </Stack>
 
@@ -1375,6 +1393,13 @@ function ControlDetalleVenta() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <FacturaVentaDialog
+        abierto={facturaAbierta}
+        venta={venta}
+        detalles={detalles}
+        onCerrar={() => setFacturaAbierta(false)}
+      />
     </Stack>
   )
 }

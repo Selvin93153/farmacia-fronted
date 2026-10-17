@@ -1,59 +1,83 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
 
 import {
   Alert,
   Avatar,
   Box,
-  Button,
-  Card,
-  CardActionArea,
-  CardContent,
   Chip,
   CircularProgress,
+  Divider,
   Paper,
   Stack,
   Typography,
+  useTheme,
 } from '@mui/material'
 
-import AdminPanelSettingsRoundedIcon from '@mui/icons-material/AdminPanelSettingsRounded'
-import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded'
-import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import AccountBalanceWalletRoundedIcon from '@mui/icons-material/AccountBalanceWalletRounded'
 import Inventory2RoundedIcon from '@mui/icons-material/Inventory2Rounded'
-import LocalPharmacyRoundedIcon from '@mui/icons-material/LocalPharmacyRounded'
 import PointOfSaleRoundedIcon from '@mui/icons-material/PointOfSaleRounded'
-import SwapHorizRoundedIcon from '@mui/icons-material/SwapHorizRounded'
+import StorefrontRoundedIcon from '@mui/icons-material/StorefrontRounded'
+import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 
-import { obtenerSesion, type UsuarioSesion } from '../auth/authService'
+import { BarChart } from '@mui/x-charts/BarChart'
+import { LineChart } from '@mui/x-charts/LineChart'
+import { PieChart } from '@mui/x-charts/PieChart'
+
+import {
+  obtenerDatosInicio,
+  type DatosInicio,
+} from './inicioService'
+
+const formatoMoneda = new Intl.NumberFormat('es-GT', {
+  style: 'currency',
+  currency: 'GTQ',
+  minimumFractionDigits: 2,
+})
 
 function Inicio() {
-  const navigate = useNavigate()
+  const theme = useTheme()
 
-  const [usuario, setUsuario] = useState<UsuarioSesion | null>(null)
+  const [datos, setDatos] = useState<DatosInicio | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
 
+  // Carga la sesión y los indicadores permitidos para el rol autenticado.
   useEffect(() => {
-    const cargarUsuario = async () => {
+    const cargarInicio = async () => {
+      setCargando(true)
+      setError('')
+
       try {
-        const sesion = await obtenerSesion()
-        setUsuario(sesion)
+        const datosRecibidos = await obtenerDatosInicio()
+        setDatos(datosRecibidos)
       } catch {
-        setError('No se pudo obtener la información del usuario.')
+        setError(
+          'No se pudo cargar la información principal de SIGFAR.',
+        )
       } finally {
         setCargando(false)
       }
     }
 
-    cargarUsuario()
+    void cargarInicio()
+  }, [])
+
+  const fechaActual = useMemo(() => {
+    const texto = new Intl.DateTimeFormat('es-GT', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(new Date())
+
+    return texto.charAt(0).toUpperCase() + texto.slice(1)
   }, [])
 
   if (cargando) {
     return (
       <Box
         sx={{
-          minHeight: 400,
+          minHeight: 420,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -61,527 +85,705 @@ function Inicio() {
       >
         <Stack spacing={2} sx={{ alignItems: 'center' }}>
           <CircularProgress />
-          <Typography color="text.secondary">Cargando SIGFAR...</Typography>
+          <Typography sx={{ color: 'text.secondary' }}>
+            Preparando tu panel...
+          </Typography>
         </Stack>
       </Box>
     )
   }
 
-  const nombreCompleto = usuario
-    ? `${usuario.nombre} ${usuario.apellido}`
-    : 'Usuario'
+  if (!datos) {
+    return (
+      <Alert severity="error">
+        {error || 'No se pudo cargar el Inicio.'}
+      </Alert>
+    )
+  }
 
-  const iniciales = usuario
-    ? `${usuario.nombre.charAt(0)}${usuario.apellido.charAt(0)}`
-    : 'U'
+  const { usuario } = datos
+
+  const nombreCompleto =
+    `${usuario.nombre} ${usuario.apellido}`.trim()
+
+  const iniciales =
+    `${usuario.nombre.charAt(0)}${usuario.apellido.charAt(0)}`.toUpperCase()
 
   const nombreRol =
-    usuario?.rol?.nombre ?? `Rol ${usuario?.id_rol ?? '-'}`
+    usuario.rol?.nombre ?? `Rol ${usuario.id_rol}`
 
-  const nombreSucursal =
-    usuario?.sucursal?.nombre ??
-    (usuario?.id_sucursal
-      ? `Sucursal ${usuario.id_sucursal}`
-      : 'Sin sucursal asignada')
+  const alcance =
+    usuario.id_sucursal === null
+      ? 'Alcance nacional'
+      : usuario.sucursal?.nombre ??
+        `Sucursal ${usuario.id_sucursal}`
+
+  const hayVentas = datos.ventasUltimos7Dias.some(
+    (punto) => punto.total > 0,
+  )
+
+  const hayFlujo = datos.flujoUltimos7Dias.some(
+    (punto) =>
+      punto.ingresos > 0 || punto.egresos > 0,
+  )
+
+  const totalInventario =
+    datos.inventario.normal +
+    datos.inventario.bajo +
+    datos.inventario.sinStock
+
+  // Datos que alimentan la gráfica circular del estado de inventario.
+  const datosGraficaInventario = [
+    {
+      id: 0,
+      value: datos.inventario.normal,
+      label: 'Normal',
+      color: theme.palette.success.main,
+    },
+    {
+      id: 1,
+      value: datos.inventario.bajo,
+      label: 'Stock bajo',
+      color: theme.palette.warning.main,
+    },
+    {
+      id: 2,
+      value: datos.inventario.sinStock,
+      label: 'Sin stock',
+      color: theme.palette.error.main,
+    },
+  ]
 
   return (
-    <Stack spacing={4}>
+    <Stack spacing={3}>
       {error && <Alert severity="error">{error}</Alert>}
+
+      {datos.advertencias.map((advertencia) => (
+        <Alert key={advertencia} severity="warning">
+          {advertencia}
+        </Alert>
+      ))}
 
       <Paper
         elevation={0}
-        sx={(theme) => ({
+        sx={{
           position: 'relative',
           overflow: 'hidden',
           borderRadius: 4,
-          p: { xs: 3, md: 4 },
-          color: theme.palette.primary.contrastText,
-          background: `linear-gradient(
-            135deg,
-            ${theme.palette.primary.dark} 0%,
-            ${theme.palette.primary.main} 65%,
-            ${theme.palette.primary.light} 130%
-          )`,
-
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            width: 250,
-            height: 250,
-            borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.08)',
-            top: -100,
-            right: -60,
-          },
-
+          p: { xs: 2.5, md: 3.5 },
+          color: '#ffffff',
+          background:
+            'linear-gradient(120deg, #0f766e 0%, #0f9f7d 50%, #2563eb 135%)',
+          boxShadow: '0 14px 40px rgba(15, 118, 110, 0.16)',
           '&::after': {
             content: '""',
             position: 'absolute',
-            width: 180,
-            height: 180,
+            width: 260,
+            height: 260,
             borderRadius: '50%',
-            bgcolor: 'rgba(255,255,255,0.06)',
-            bottom: -100,
-            right: 180,
+            right: -90,
+            top: -120,
+            backgroundColor: 'rgba(255,255,255,0.08)',
           },
-        })}
+        }}
       >
         <Stack
           direction={{ xs: 'column', md: 'row' }}
-          spacing={3}
+          spacing={2.5}
           sx={{
             position: 'relative',
             zIndex: 1,
+            alignItems: { md: 'center' },
             justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', md: 'center' },
           }}
         >
-          <Stack direction="row" spacing={2.5} sx={{ alignItems: 'center' }}>
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{ alignItems: 'center' }}
+          >
             <Avatar
               sx={{
-                width: 70,
-                height: 70,
-                bgcolor: 'background.paper',
-                color: 'primary.main',
-                fontSize: 24,
-                fontWeight: 700,
+                width: 62,
+                height: 62,
+                bgcolor: 'rgba(255,255,255,0.16)',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.24)',
+                fontSize: 20,
+                fontWeight: 800,
               }}
             >
               {iniciales}
             </Avatar>
 
             <Box>
-              <Typography variant="body1" sx={{ opacity: 0.85, mb: 0.5 }}>
-                Bienvenido nuevamente
+              <Typography
+                variant="body2"
+                sx={{ opacity: 0.82 }}
+              >
+                Bienvenido a SIGFAR
               </Typography>
 
-              <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  mt: 0.2,
+                  fontWeight: 900,
+                  letterSpacing: -0.5,
+                }}
+              >
                 {nombreCompleto}
               </Typography>
 
-              <Typography sx={{ mt: 0.5, opacity: 0.9 }}>
-                Sistema Integral de Gestión Farmacéutica
-              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  mt: 1,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Chip
+                  label={nombreRol}
+                  size="small"
+                  sx={{
+                    color: '#ffffff',
+                    bgcolor: 'rgba(255,255,255,0.14)',
+                    border: '1px solid rgba(255,255,255,0.16)',
+                  }}
+                />
+
+                <Chip
+                  icon={
+                    <StorefrontRoundedIcon
+                      sx={{ color: '#ffffff !important' }}
+                    />
+                  }
+                  label={alcance}
+                  size="small"
+                  sx={{
+                    color: '#ffffff',
+                    bgcolor: 'rgba(255,255,255,0.10)',
+                    border: '1px solid rgba(255,255,255,0.14)',
+                  }}
+                />
+              </Stack>
             </Box>
           </Stack>
 
-          <Button
-            variant="contained"
-            endIcon={<ArrowForwardRoundedIcon />}
-            onClick={() => navigate('/app/farmacias')}
-            sx={{
-              bgcolor: 'background.paper',
-              color: 'primary.main',
-              px: 3,
-              py: 1.2,
-              fontWeight: 700,
+          <Box sx={{ textAlign: { md: 'right' } }}>
+            <Typography
+              variant="body2"
+              sx={{ opacity: 0.78 }}
+            >
+              {fechaActual}
+            </Typography>
 
-              '&:hover': {
-                bgcolor: 'grey.100',
-              },
-            }}
-          >
-            Ir a Farmacias
-          </Button>
+            <Typography
+              variant="caption"
+              sx={{ mt: 0.5, display: 'block', opacity: 0.66 }}
+            >
+              Sesión activa · Información actual del sistema
+            </Typography>
+          </Box>
         </Stack>
       </Paper>
 
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Resumen de tu sesión
-        </Typography>
-
-        <Typography color="text.secondary" sx={{ mb: 2.5 }}>
-          Información asociada a tu usuario dentro de SIGFAR.
-        </Typography>
-
-        <Box
+      {(datos.ventasDisponibles ||
+        datos.flujoDisponible ||
+        datos.inventarioDisponible) && (
+        <Paper
+          variant="outlined"
           sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              lg: 'repeat(3, 1fr)',
-            },
-            gap: 2,
+            borderRadius: 3,
+            overflow: 'hidden',
           }}
         >
-          <Card
-            variant="outlined"
+          <Box
             sx={{
-              borderRadius: 3,
-              transition: '0.2s',
-
-              '&:hover': {
-                boxShadow: 3,
-                transform: 'translateY(-2px)',
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(3, 1fr)',
               },
             }}
           >
-            <CardContent>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'primary.main',
-                    color: 'primary.contrastText',
-                  }}
-                >
-                  <AdminPanelSettingsRoundedIcon />
-                </Box>
+            {datos.ventasDisponibles && (
+              <IndicadorCompacto
+                icono={<PointOfSaleRoundedIcon />}
+                titulo="Ventas de hoy"
+                valor={formatoMoneda.format(datos.ventasHoy)}
+                descripcion="Ventas completadas"
+                color={theme.palette.primary.main}
+              />
+            )}
 
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Rol
-                  </Typography>
+            {datos.flujoDisponible && (
+              <IndicadorCompacto
+                icono={<AccountBalanceWalletRoundedIcon />}
+                titulo="Flujo neto de hoy"
+                valor={formatoMoneda.format(
+                  datos.flujoNetoHoy,
+                )}
+                descripcion="Ingresos menos egresos"
+                color={
+                  datos.flujoNetoHoy >= 0
+                    ? theme.palette.success.main
+                    : theme.palette.error.main
+                }
+              />
+            )}
 
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    {nombreRol}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
+            {datos.inventarioDisponible && (
+              <IndicadorCompacto
+                icono={<Inventory2RoundedIcon />}
+                titulo="Stock crítico"
+                valor={String(datos.stockCritico)}
+                descripcion="Registros bajos o agotados"
+                color={
+                  datos.stockCritico > 0
+                    ? theme.palette.warning.main
+                    : theme.palette.success.main
+                }
+              />
+            )}
+          </Box>
+        </Paper>
+      )}
 
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              transition: '0.2s',
-
-              '&:hover': {
-                boxShadow: 3,
-                transform: 'translateY(-2px)',
-              },
-            }}
-          >
-            <CardContent>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'secondary.main',
-                    color: 'secondary.contrastText',
-                  }}
-                >
-                  <BusinessRoundedIcon />
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Sucursal asignada
-                  </Typography>
-
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    {nombreSucursal}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              transition: '0.2s',
-
-              '&:hover': {
-                boxShadow: 3,
-                transform: 'translateY(-2px)',
-              },
-            }}
-          >
-            <CardContent>
-              <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
-                <Box
-                  sx={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 2.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: 'success.main',
-                    color: 'success.contrastText',
-                  }}
-                >
-                  <CheckCircleRoundedIcon />
-                </Box>
-
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Estado de usuario
-                  </Typography>
-
-                  <Chip
-                    label={usuario?.estado ?? 'Desconocido'}
-                    color={usuario?.estado === 'ACTIVO' ? 'success' : 'default'}
-                    size="small"
-                    sx={{ mt: 0.5, fontWeight: 700 }}
-                  />
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Box>
-      </Box>
-
-      <Box>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-          Accesos rápidos
-        </Typography>
-
-        <Typography color="text.secondary" sx={{ mb: 2.5 }}>
-          Accede a los principales módulos del sistema.
-        </Typography>
-
-        <Box
+      {datos.ventasDisponibles && (
+        <Paper
+          variant="outlined"
           sx={{
-            display: 'grid',
-            gridTemplateColumns: {
-              xs: '1fr',
-              sm: 'repeat(2, 1fr)',
-              lg: 'repeat(4, 1fr)',
+            borderRadius: 3,
+            p: { xs: 2, md: 3 },
+            transition:
+              'box-shadow 180ms ease, transform 180ms ease',
+            '&:hover': {
+              boxShadow: 3,
+              transform: 'translateY(-1px)',
             },
-            gap: 2,
           }}
         >
-          <Card
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={1}
+            sx={{
+              mb: 1,
+              alignItems: { sm: 'center' },
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{ fontWeight: 800 }}
+              >
+                Ventas de los últimos 7 días
+              </Typography>
+
+              <Typography
+                variant="body2"
+                sx={{ color: 'text.secondary' }}
+              >
+                Comportamiento diario de las ventas completadas.
+              </Typography>
+            </Box>
+
+            <TrendingUpRoundedIcon
+              sx={{ color: 'primary.main' }}
+            />
+          </Stack>
+
+          {/* Gráfica principal: muestra la tendencia monetaria de ventas por día. */}
+          {hayVentas ? (
+            <LineChart
+              height={320}
+              xAxis={[
+                {
+                  scaleType: 'point',
+                  data: datos.ventasUltimos7Dias.map(
+                    (punto) => punto.etiqueta,
+                  ),
+                },
+              ]}
+              series={[
+                {
+                  data: datos.ventasUltimos7Dias.map(
+                    (punto) => punto.total,
+                  ),
+                  label: 'Ventas',
+                  color: theme.palette.primary.main,
+                  valueFormatter: (valor) =>
+                    formatoMoneda.format(
+                      Number(valor ?? 0),
+                    ),
+                },
+              ]}
+              margin={{
+                left: 80,
+                right: 24,
+                top: 30,
+                bottom: 30,
+              }}
+            />
+          ) : (
+            <EstadoSinDatos
+              texto="Todavía no hay ventas completadas en los últimos 7 días."
+            />
+          )}
+        </Paper>
+      )}
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            lg:
+              datos.flujoDisponible &&
+              datos.inventarioDisponible
+                ? '1.35fr 1fr'
+                : '1fr',
+          },
+          gap: 3,
+        }}
+      >
+        {datos.flujoDisponible && (
+          <Paper
             variant="outlined"
             sx={{
+              minWidth: 0,
               borderRadius: 3,
-              height: '100%',
-              transition: '0.2s',
-
+              p: { xs: 2, md: 3 },
+              transition:
+                'box-shadow 180ms ease, transform 180ms ease',
               '&:hover': {
-                boxShadow: 4,
-                transform: 'translateY(-4px)',
-                borderColor: 'primary.main',
+                boxShadow: 3,
+                transform: 'translateY(-1px)',
               },
             }}
           >
-            <CardActionArea
-              onClick={() => navigate('/app/farmacias')}
-              sx={{ height: '100%' }}
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Stack spacing={2}>
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 3,
-                      bgcolor: 'primary.main',
-                      color: 'primary.contrastText',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <LocalPharmacyRoundedIcon />
-                  </Box>
+              Ingresos vs. egresos
+            </Typography>
 
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                      Farmacias
-                    </Typography>
+            <Typography
+              variant="body2"
+              sx={{ color: 'text.secondary', mb: 1 }}
+            >
+              Flujo de efectivo registrado durante la última
+              semana.
+            </Typography>
 
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 0.7 }}
-                    >
-                      Consulta y administra las sucursales registradas en
-                      SIGFAR.
-                    </Typography>
-                  </Box>
+            {/* Gráfica financiera: compara ingresos y egresos de caja por día. */}
+            {hayFlujo ? (
+              <BarChart
+                height={300}
+                xAxis={[
+                  {
+                    scaleType: 'band',
+                    data: datos.flujoUltimos7Dias.map(
+                      (punto) => punto.etiqueta,
+                    ),
+                  },
+                ]}
+                series={[
+                  {
+                    data: datos.flujoUltimos7Dias.map(
+                      (punto) => punto.ingresos,
+                    ),
+                    label: 'Ingresos',
+                    color: theme.palette.success.main,
+                    valueFormatter: (valor) =>
+                      formatoMoneda.format(
+                        Number(valor ?? 0),
+                      ),
+                  },
+                  {
+                    data: datos.flujoUltimos7Dias.map(
+                      (punto) => punto.egresos,
+                    ),
+                    label: 'Egresos',
+                    color: theme.palette.error.main,
+                    valueFormatter: (valor) =>
+                      formatoMoneda.format(
+                        Number(valor ?? 0),
+                      ),
+                  },
+                ]}
+                margin={{
+                  left: 80,
+                  right: 20,
+                  top: 30,
+                  bottom: 30,
+                }}
+              />
+            ) : (
+              <EstadoSinDatos
+                texto="Todavía no hay movimientos de efectivo en los últimos 7 días."
+              />
+            )}
+          </Paper>
+        )}
 
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Typography
-                      variant="body2"
-                      color="primary"
-                      sx={{ fontWeight: 700 }}
-                    >
-                      Abrir módulo
-                    </Typography>
+        {datos.inventarioDisponible && (
+          <Paper
+            variant="outlined"
+            sx={{
+              minWidth: 0,
+              borderRadius: 3,
+              p: { xs: 2, md: 3 },
+              transition:
+                'box-shadow 180ms ease, transform 180ms ease',
+              '&:hover': {
+                boxShadow: 3,
+                transform: 'translateY(-1px)',
+              },
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
+            >
+              Estado del inventario
+            </Typography>
 
-                    <ArrowForwardRoundedIcon color="primary" fontSize="small" />
-                  </Stack>
+            <Typography
+              variant="body2"
+              sx={{ color: 'text.secondary', mb: 1 }}
+            >
+              Distribución según los niveles mínimos definidos.
+            </Typography>
+
+            {/* Gráfica circular: resume la salud actual de las existencias. */}
+            {totalInventario > 0 ? (
+              <PieChart
+                height={260}
+                series={[
+                  {
+                    data: datosGraficaInventario,
+                    innerRadius: 58,
+                    outerRadius: 95,
+                    paddingAngle: 2,
+                    cornerRadius: 4,
+                    valueFormatter: (item) =>
+                      `${item.value} registros`,
+                  },
+                ]}
+              />
+            ) : (
+              <EstadoSinDatos
+                texto="No hay registros de inventario disponibles para mostrar."
+              />
+            )}
+
+            {totalInventario > 0 && (
+              <>
+                <Divider sx={{ my: 1.5 }} />
+
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <LeyendaInventario
+                    texto="Normal"
+                    valor={datos.inventario.normal}
+                    color={theme.palette.success.main}
+                  />
+                  <LeyendaInventario
+                    texto="Stock bajo"
+                    valor={datos.inventario.bajo}
+                    color={theme.palette.warning.main}
+                  />
+                  <LeyendaInventario
+                    texto="Sin stock"
+                    valor={datos.inventario.sinStock}
+                    color={theme.palette.error.main}
+                  />
                 </Stack>
-              </CardContent>
-            </CardActionArea>
-          </Card>
-
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              height: '100%',
-              opacity: 0.75,
-            }}
-          >
-            <CardContent sx={{ p: 3, height: '100%' }}>
-              <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 3,
-                      bgcolor: 'action.selected',
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Inventory2RoundedIcon />
-                  </Box>
-
-                  <Chip label="Próximamente" size="small" />
-                </Box>
-
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    Inventario
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.7 }}
-                  >
-                    Control de existencias y disponibilidad de medicamentos.
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              height: '100%',
-              opacity: 0.75,
-            }}
-          >
-            <CardContent sx={{ p: 3, height: '100%' }}>
-              <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 3,
-                      bgcolor: 'action.selected',
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <PointOfSaleRoundedIcon />
-                  </Box>
-
-                  <Chip label="Próximamente" size="small" />
-                </Box>
-
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    Ventas
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.7 }}
-                  >
-                    Consulta y registra las operaciones de venta de las
-                    farmacias.
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-
-          <Card
-            variant="outlined"
-            sx={{
-              borderRadius: 3,
-              height: '100%',
-              opacity: 0.75,
-            }}
-          >
-            <CardContent sx={{ p: 3, height: '100%' }}>
-              <Stack spacing={2}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 3,
-                      bgcolor: 'action.selected',
-                      color: 'text.secondary',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <SwapHorizRoundedIcon />
-                  </Box>
-
-                  <Chip label="Próximamente" size="small" />
-                </Box>
-
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                    Traslados
-                  </Typography>
-
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ mt: 0.7 }}
-                  >
-                    Gestiona movimientos de medicamentos entre las diferentes
-                    sucursales.
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Box>
+              </>
+            )}
+          </Paper>
+        )}
       </Box>
+
+      {!datos.ventasDisponibles &&
+        !datos.flujoDisponible &&
+        !datos.inventarioDisponible && (
+          <Paper
+            variant="outlined"
+            sx={{
+              borderRadius: 3,
+              p: 4,
+              textAlign: 'center',
+            }}
+          >
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 800 }}
+            >
+              Tu sesión está lista
+            </Typography>
+
+            <Typography
+              sx={{ mt: 0.7, color: 'text.secondary' }}
+            >
+              Este rol no consulta indicadores operativos de
+              ventas, caja o inventario desde el Inicio.
+            </Typography>
+          </Paper>
+        )}
+    </Stack>
+  )
+}
+
+interface IndicadorCompactoProps {
+  icono: React.ReactNode
+  titulo: string
+  valor: string
+  descripcion: string
+  color: string
+}
+
+function IndicadorCompacto({
+  icono,
+  titulo,
+  valor,
+  descripcion,
+  color,
+}: IndicadorCompactoProps) {
+  return (
+    <Stack
+      direction="row"
+      spacing={1.7}
+      sx={{
+        p: 2.2,
+        minWidth: 0,
+        alignItems: 'center',
+        borderRight: {
+          xs: 0,
+          sm: '1px solid',
+        },
+        borderBottom: {
+          xs: '1px solid',
+          sm: 0,
+        },
+        borderColor: 'divider',
+        '&:last-of-type': {
+          borderRight: 0,
+          borderBottom: 0,
+        },
+      }}
+    >
+      <Box
+        sx={{
+          width: 44,
+          height: 44,
+          flexShrink: 0,
+          borderRadius: 2.5,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color,
+          bgcolor: `${color}14`,
+        }}
+      >
+        {icono}
+      </Box>
+
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          variant="caption"
+          sx={{ color: 'text.secondary' }}
+        >
+          {titulo}
+        </Typography>
+
+        <Typography
+          variant="h6"
+          sx={{
+            mt: 0.1,
+            fontWeight: 900,
+            lineHeight: 1.2,
+          }}
+        >
+          {valor}
+        </Typography>
+
+        <Typography
+          variant="caption"
+          sx={{ color: 'text.secondary' }}
+        >
+          {descripcion}
+        </Typography>
+      </Box>
+    </Stack>
+  )
+}
+
+function EstadoSinDatos({ texto }: { texto: string }) {
+  return (
+    <Box
+      sx={{
+        minHeight: 260,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        px: 3,
+      }}
+    >
+      <Typography
+        variant="body2"
+        sx={{ color: 'text.secondary' }}
+      >
+        {texto}
+      </Typography>
+    </Box>
+  )
+}
+
+interface LeyendaInventarioProps {
+  texto: string
+  valor: number
+  color: string
+}
+
+function LeyendaInventario({
+  texto,
+  valor,
+  color,
+}: LeyendaInventarioProps) {
+  return (
+    <Stack
+      direction="row"
+      spacing={0.8}
+      sx={{ alignItems: 'center' }}
+    >
+      <Box
+        sx={{
+          width: 9,
+          height: 9,
+          borderRadius: '50%',
+          bgcolor: color,
+        }}
+      />
+      <Typography
+        variant="caption"
+        sx={{ color: 'text.secondary' }}
+      >
+        {texto}: {valor}
+      </Typography>
     </Stack>
   )
 }
