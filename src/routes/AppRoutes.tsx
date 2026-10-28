@@ -25,6 +25,7 @@ import ControlPedidos from '../modules/pedidos/ControlPedidos'
 import ControlTranslado from '../modules/traslados/ControlTraslados'
 
 import PrivateRoute from './PrivateRoute'
+import RoleRoute from './RoleRoute'
 
 function AppRoutes() {
   return (
@@ -35,33 +36,302 @@ function AppRoutes() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Navigate to="inicio" replace />} />
 
-          <Route path="inicio" element={<Inicio />} />
-          <Route path="perfil" element={<Perfil />} />
-          <Route path="farmacias" element={<ControlSucursal />} />
-          <Route path="empleados" element={<ControlEmpleado />} />
-          <Route path="medicamentos" element={<ControlMedicamento />} />
-          <Route path="inventario" element={<ControlInventario />} />
-          <Route path="movimientos-inventario" element={<ControlMovimientoInventario />} />
-          <Route path="planillas" element={<ControlPlanilla />} />
-          <Route path="planillas/:id/detalle" element={<ControlDetallePlanilla />} />
-          <Route path="cajas" element={<ControlCaja />} />
-          <Route path="ventas" element={<ControlVenta />} />
-          <Route path="ventas/realizadas" element={<ControlVentasRealizadas />} />
-          <Route path="ventas/:id/detalle" element={<ControlDetalleVenta />} />
-          <Route path="usuarios" element={<ControlUsuario />} />
-          <Route path="movimientos-caja" element={<ControlMovimientoCaja />} />
-          <Route path="activos-fijos" element={<ControlActivoFijo />} />
-          <Route path="auditoria-efectivo" element={<ControlAuditoriaEfectivo />} />
-          <Route path="entregas" element={<ControlEntregas />} />
-          <Route path="pedidos" element={<ControlPedidos />} />
-          <Route path="traslados" element={<ControlTranslado />} />
+          <Route
+            path="inicio"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SISTEMA',
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                  'RRHH',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <Inicio />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="perfil"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SISTEMA',
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                  'RRHH',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <Perfil />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="farmacias"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SISTEMA',
+                ]}
+              >
+                <ControlSucursal />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="empleados"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'RRHH',
+                ]}
+              >
+                <ControlEmpleado />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="medicamentos"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlMedicamento />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="inventario"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                ]}
+              >
+                <ControlInventario />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="movimientos-inventario"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                ]}
+              >
+                <ControlMovimientoInventario />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="planillas"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'RRHH',
+                ]}
+              >
+                <ControlPlanilla />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="planillas/:id/detalle"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'RRHH',
+                ]}
+              >
+                <ControlDetallePlanilla />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="cajas"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                ]}
+              >
+                <ControlCaja />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="ventas"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlVenta />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="ventas/realizadas"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlVentasRealizadas />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="ventas/:id/detalle"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlDetalleVenta />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="usuarios"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SISTEMA',
+                ]}
+              >
+                <ControlUsuario />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="movimientos-caja"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                ]}
+              >
+                <ControlMovimientoCaja />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="activos-fijos"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                ]}
+              >
+                <ControlActivoFijo />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="auditoria-efectivo"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SISTEMA',
+                  'ADMIN_SUCURSAL',
+                ]}
+              >
+                <ControlAuditoriaEfectivo />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="entregas"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlEntregas />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="pedidos"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'TRABAJADOR_SUCURSAL',
+                ]}
+              >
+                <ControlPedidos />
+              </RoleRoute>
+            }
+          />
+
+          <Route
+            path="traslados"
+            element={
+              <RoleRoute
+                rolesPermitidos={[
+                  'ADMIN_SUCURSAL',
+                  'INVENTARIO',
+                ]}
+              >
+                <ControlTranslado />
+              </RoleRoute>
+            }
+          />
         </Route>
       </Route>
 
-      <Route path="/" element={<Navigate to="/app/inicio" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route
+        path="/"
+        element={<Navigate to="/app/inicio" replace />}
+      />
+
+      <Route
+        path="*"
+        element={<Navigate to="/" replace />}
+      />
     </Routes>
   )
 }
 
 export default AppRoutes
+

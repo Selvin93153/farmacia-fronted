@@ -68,30 +68,32 @@ export const menuConfig: SeccionMenu[] = [
         ],
       },
       {
-  texto: 'Entregas',
-  ruta: '/app/entregas',
-  icono: LocalShippingRoundedIcon,
-  roles: ['ADMIN_SISTEMA', 'ADMIN_SUCURSAL', 'TRABAJADOR_SUCURSAL'],
-},
-{
-  texto: 'Pedidos',
-  ruta: '/app/pedidos',
-  icono: AssignmentRoundedIcon,
-  roles: [
-    'ADMIN_SISTEMA',
-    'ADMIN_SUCURSAL',
-    'TRABAJADOR_SUCURSAL',
-  ],
-},
-{
-  texto: 'Traslados',
-  ruta: '/app/traslados',
-  icono: SwapHorizRoundedIcon,
-  roles: [
-    'ADMIN_SUCURSAL',
-    'INVENTARIO',
-  ],
-},
+        texto: 'Pedidos',
+        ruta: '/app/pedidos',
+        icono: AssignmentRoundedIcon,
+        roles: [
+          'ADMIN_SUCURSAL',
+          'TRABAJADOR_SUCURSAL',
+        ],
+      },
+      {
+        texto: 'Entregas',
+        ruta: '/app/entregas',
+        icono: LocalShippingRoundedIcon,
+        roles: [
+          'ADMIN_SUCURSAL',
+          'TRABAJADOR_SUCURSAL',
+        ],
+      },
+      {
+        texto: 'Traslados',
+        ruta: '/app/traslados',
+        icono: SwapHorizRoundedIcon,
+        roles: [
+          'ADMIN_SUCURSAL',
+          'INVENTARIO',
+        ],
+      },
       {
         texto: 'Cajas',
         ruta: '/app/cajas',
@@ -126,7 +128,6 @@ export const menuConfig: SeccionMenu[] = [
         roles: [
           'ADMIN_SUCURSAL',
           'INVENTARIO',
-           'TRABAJADOR_SUCURSAL',
         ],
       },
       {
@@ -139,20 +140,25 @@ export const menuConfig: SeccionMenu[] = [
         ],
       },
       {
-        texto: 'Activos Empresa',
+        texto: 'Activos Fijos',
         ruta: '/app/activos-fijos',
         icono: BusinessCenterRoundedIcon,
+        roles: ['ADMIN_SUCURSAL'],
+      },
+    ],
+  },
+  {
+    titulo: 'Finanzas y Auditoría',
+    opciones: [
+      {
+        texto: 'Auditoría de Efectivo',
+        ruta: '/app/auditoria-efectivo',
+        icono: AssessmentRoundedIcon,
         roles: [
+          'ADMIN_SISTEMA',
           'ADMIN_SUCURSAL',
-          'INVENTARIO',
         ],
       },
-      {
-  texto: 'Auditoría de Efectivo',
-  ruta: '/app/auditoria-efectivo',
-  icono: AssessmentRoundedIcon,
-  roles: ['ADMIN_SISTEMA'],
-}
     ],
   },
   {
@@ -178,8 +184,6 @@ export const menuConfig: SeccionMenu[] = [
       },
     ],
   },
-
-
   {
     titulo: 'Usuarios',
     opciones: [
@@ -187,9 +191,7 @@ export const menuConfig: SeccionMenu[] = [
         texto: 'Usuarios',
         ruta: '/app/usuarios',
         icono: BadgeRoundedIcon,
-        roles: [
-          'ADMIN_SISTEMA',
-        ],
+        roles: ['ADMIN_SISTEMA'],
       },
     ],
   },
