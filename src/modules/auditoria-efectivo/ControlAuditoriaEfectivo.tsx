@@ -36,6 +36,10 @@ import TrendingDownRoundedIcon from '@mui/icons-material/TrendingDownRounded'
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded'
 
 import {
+  obtenerSesion,
+  type UsuarioSesion,
+} from '../auth/authService'
+import {
   obtenerCajas,
   type Caja,
 } from '../caja/cajasService'
@@ -83,6 +87,7 @@ const formatearFecha = (fecha: string) =>
   }).format(new Date(fecha))
 
 function ControlAuditoriaEfectivo() {
+  const [usuario, setUsuario] = useState<UsuarioSesion | null>(null)
   const [resumen, setResumen] = useState<ResumenAuditoriaEfectivo>(resumenInicial)
   const [movimientos, setMovimientos] = useState<MovimientoAuditoriaEfectivo[]>([])
   const [resumenSucursales, setResumenSucursales] = useState<
@@ -104,6 +109,9 @@ function ControlAuditoriaEfectivo() {
 
   const [movimientoSeleccionado, setMovimientoSeleccionado] =
     useState<MovimientoAuditoriaEfectivo | null>(null)
+
+  const tieneSucursalAsignada =
+    usuario?.id_sucursal !== null && usuario?.id_sucursal !== undefined
 
   const obtenerMensajeError = (
     error: unknown,
@@ -134,7 +142,10 @@ function ControlAuditoriaEfectivo() {
     return mensajePredeterminado
   }
 
-  const construirFiltros = (): FiltrosAuditoriaEfectivo => {
+  // Construye los filtros respetando siempre la sucursal asignada a la sesión.
+  const construirFiltros = (
+    idSucursalObligatoria: number | null = usuario?.id_sucursal ?? null,
+  ): FiltrosAuditoriaEfectivo => {
     const filtros: FiltrosAuditoriaEfectivo = {}
 
     if (fechaDesde) {
@@ -145,7 +156,9 @@ function ControlAuditoriaEfectivo() {
       filtros.fecha_hasta = fechaHasta
     }
 
-    if (idSucursal !== 'TODAS') {
+    if (idSucursalObligatoria !== null) {
+      filtros.id_sucursal = idSucursalObligatoria
+    } else if (idSucursal !== 'TODAS') {
       filtros.id_sucursal = Number(idSucursal)
     }
 
@@ -165,12 +178,14 @@ function ControlAuditoriaEfectivo() {
   }
 
   // Carga simultáneamente los indicadores, movimientos y consolidado nacional.
-  const cargarAuditoria = async () => {
+  const cargarAuditoria = async (
+    idSucursalObligatoria: number | null = usuario?.id_sucursal ?? null,
+  ) => {
     setCargando(true)
     setError('')
 
     try {
-      const filtros = construirFiltros()
+      const filtros = construirFiltros(idSucursalObligatoria)
 
       const [resumenRecibido, movimientosRecibidos, resumenSucursalRecibido] =
         await Promise.all([
@@ -194,16 +209,28 @@ function ControlAuditoriaEfectivo() {
     }
   }
 
-  // Carga los catálogos que alimentan los filtros de sucursal y caja.
-  const cargarCatalogos = async () => {
+  // Carga los catálogos necesarios según el alcance de la sesión.
+  const cargarCatalogos = async (sesion: UsuarioSesion) => {
     try {
-      const [sucursalesRecibidas, cajasRecibidas] = await Promise.all([
-        obtenerSucursales(),
-        obtenerCajas(),
-      ])
+      if (sesion.id_sucursal === null) {
+        const [sucursalesRecibidas, cajasRecibidas] = await Promise.all([
+          obtenerSucursales(),
+          obtenerCajas(),
+        ])
 
-      setSucursales(sucursalesRecibidas)
-      setCajas(cajasRecibidas)
+        setSucursales(sucursalesRecibidas)
+        setCajas(cajasRecibidas)
+        return
+      }
+
+      // Para usuarios de sucursal no se necesita cargar el catálogo nacional de sucursales.
+      const cajasRecibidas = await obtenerCajas()
+      setSucursales([])
+      setCajas(
+        cajasRecibidas.filter(
+          (caja) => caja.id_sucursal === sesion.id_sucursal,
+        ),
+      )
     } catch (error: unknown) {
       setError(
         obtenerMensajeError(
@@ -214,9 +241,39 @@ function ControlAuditoriaEfectivo() {
     }
   }
 
+  // Primero obtiene la sesión para fijar el alcance antes de consultar la auditoría.
   useEffect(() => {
-    cargarCatalogos()
-    cargarAuditoria()
+    const inicializarAuditoria = async () => {
+      setCargando(true)
+      setError('')
+
+      try {
+        const sesion = await obtenerSesion()
+        setUsuario(sesion)
+
+        const sucursalInicial =
+          sesion.id_sucursal === null
+            ? 'TODAS'
+            : String(sesion.id_sucursal)
+
+        setIdSucursal(sucursalInicial)
+
+        await Promise.all([
+          cargarCatalogos(sesion),
+          cargarAuditoria(sesion.id_sucursal),
+        ])
+      } catch (error: unknown) {
+        setError(
+          obtenerMensajeError(
+            error,
+            'No se pudo inicializar la auditoría de efectivo.',
+          ),
+        )
+        setCargando(false)
+      }
+    }
+
+    void inicializarAuditoria()
   }, [])
 
   const cajasDisponibles = useMemo(() => {
@@ -260,10 +317,15 @@ function ControlAuditoriaEfectivo() {
     })
   }, [movimientos, busqueda])
 
+  // Limpia filtros opcionales sin eliminar el alcance obligatorio de la sucursal.
   const limpiarFiltros = () => {
     setFechaDesde('')
     setFechaHasta('')
-    setIdSucursal('TODAS')
+    setIdSucursal(
+      usuario?.id_sucursal === null || usuario?.id_sucursal === undefined
+        ? 'TODAS'
+        : String(usuario.id_sucursal),
+    )
     setIdCaja('TODAS')
     setTipoMovimiento('TODOS')
     setOrigen('TODOS')
@@ -273,7 +335,7 @@ function ControlAuditoriaEfectivo() {
   const hayFiltros =
     fechaDesde !== '' ||
     fechaHasta !== '' ||
-    idSucursal !== 'TODAS' ||
+    (!tieneSucursalAsignada && idSucursal !== 'TODAS') ||
     idCaja !== 'TODAS' ||
     tipoMovimiento !== 'TODOS' ||
     origen !== 'TODOS' ||
@@ -295,15 +357,18 @@ function ControlAuditoriaEfectivo() {
           </Typography>
 
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Supervisa ingresos, egresos y flujo neto de las cajas de toda la
-            empresa.
+            {!tieneSucursalAsignada
+              ? 'Supervisa ingresos, egresos y flujo neto de las cajas de toda la empresa.'
+              : `Supervisa ingresos, egresos y flujo neto de ${
+                  usuario?.sucursal?.nombre ?? 'tu sucursal'
+                }.`}
           </Typography>
         </Box>
 
         <Button
           variant="outlined"
           startIcon={<RefreshRoundedIcon />}
-          onClick={cargarAuditoria}
+          onClick={() => void cargarAuditoria()}
           disabled={cargando}
           sx={{ textTransform: 'none', fontWeight: 600 }}
         >
@@ -406,17 +471,30 @@ function ControlAuditoriaEfectivo() {
                   labelId="auditoria-sucursal-label"
                   label="Sucursal"
                   value={idSucursal}
+                  disabled={tieneSucursalAsignada}
                   onChange={(event) => setIdSucursal(event.target.value)}
                 >
-                  <MenuItem value="TODAS">Todas las sucursales</MenuItem>
-                  {sucursales.map((sucursal) => (
-                    <MenuItem
-                      key={sucursal.id_sucursal}
-                      value={sucursal.id_sucursal.toString()}
-                    >
-                      {sucursal.codigo} - {sucursal.nombre}
+                  {tieneSucursalAsignada ? (
+                    <MenuItem value={String(usuario?.id_sucursal ?? '')}>
+                      {usuario?.sucursal?.codigo ?? 'Sucursal'} -{' '}
+                      {usuario?.sucursal?.nombre ??
+                        `Sucursal ${usuario?.id_sucursal ?? ''}`}
                     </MenuItem>
-                  ))}
+                  ) : (
+                    [
+                      <MenuItem key="TODAS" value="TODAS">
+                        Todas las sucursales
+                      </MenuItem>,
+                      ...sucursales.map((sucursal) => (
+                        <MenuItem
+                          key={sucursal.id_sucursal}
+                          value={sucursal.id_sucursal.toString()}
+                        >
+                          {sucursal.codigo} - {sucursal.nombre}
+                        </MenuItem>
+                      )),
+                    ]
+                  )}
                 </Select>
               </FormControl>
 
@@ -503,7 +581,7 @@ function ControlAuditoriaEfectivo() {
 
               <Button
                 variant="contained"
-                onClick={cargarAuditoria}
+                onClick={() => void cargarAuditoria()}
                 disabled={cargando}
                 sx={{ textTransform: 'none', fontWeight: 600 }}
               >

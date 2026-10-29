@@ -37,7 +37,10 @@ import {
 
 import { obtenerSucursales } from '../sucursales/sucursalesService'
 
-import InventarioForm, { type SucursalOpcion } from './InventarioForm'
+import InventarioForm, {
+  type SucursalOpcion,
+} from './InventarioForm'
+
 import InventariosTable from './InventariosTable'
 
 import {
@@ -50,36 +53,68 @@ import {
   type Inventario,
 } from './inventariosService'
 
-type FiltroStock = 'TODOS' | 'NORMAL' | 'BAJO' | 'SIN_STOCK'
+type FiltroStock =
+  | 'TODOS'
+  | 'NORMAL'
+  | 'BAJO'
+  | 'SIN_STOCK'
 
 function ControlInventario() {
-  const [inventarios, setInventarios] = useState<Inventario[]>([])
-  const [sucursales, setSucursales] = useState<SucursalOpcion[]>([])
-  const [medicamentos, setMedicamentos] = useState<Medicamento[]>([])
-  const [idSucursalAsignada, setIdSucursalAsignada] = useState<number | null>(null)
-  const [sesionVerificada, setSesionVerificada] = useState(false)
+  const [inventarios, setInventarios] =
+    useState<Inventario[]>([])
+
+  const [sucursales, setSucursales] =
+    useState<SucursalOpcion[]>([])
+
+  const [medicamentos, setMedicamentos] =
+    useState<Medicamento[]>([])
+
+  const [
+    idSucursalAsignada,
+    setIdSucursalAsignada,
+  ] = useState<number | null>(null)
+
+  const [
+    sesionVerificada,
+    setSesionVerificada,
+  ] = useState(false)
+
+  const [
+    puedeRegistrarInventario,
+    setPuedeRegistrarInventario,
+  ] = useState(false)
 
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
 
   const [error, setError] = useState('')
-  const [errorFormulario, setErrorFormulario] = useState('')
+  const [errorFormulario, setErrorFormulario] =
+    useState('')
 
   const [busqueda, setBusqueda] = useState('')
-  const [filtroSucursal, setFiltroSucursal] = useState('TODAS')
-  const [filtroStock, setFiltroStock] = useState<FiltroStock>('TODOS')
+  const [filtroSucursal, setFiltroSucursal] =
+    useState('TODAS')
 
-  const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [filtroStock, setFiltroStock] =
+    useState<FiltroStock>('TODOS')
 
-  const [inventarioEditando, setInventarioEditando] =
-    useState<Inventario | null>(null)
+  const [
+    formularioAbierto,
+    setFormularioAbierto,
+  ] = useState(false)
+
+  const [
+    inventarioEditando,
+    setInventarioEditando,
+  ] = useState<Inventario | null>(null)
 
   const obtenerMensajeError = (
     error: unknown,
     mensajePredeterminado: string,
   ) => {
     if (axios.isAxiosError(error)) {
-      const mensajeBackend = error.response?.data?.message
+      const mensajeBackend =
+        error.response?.data?.message
 
       if (Array.isArray(mensajeBackend)) {
         return mensajeBackend.join(', ')
@@ -113,40 +148,82 @@ function ControlInventario() {
       const sesion = await obtenerSesion()
       const idSucursal = sesion.id_sucursal
 
-      if (idSucursal !== null && (!Number.isInteger(idSucursal) || idSucursal < 1)) {
-        throw new Error('No se pudo determinar la sucursal del usuario.')
+      // Solo INVENTARIO puede registrar nuevos inventarios desde esta vista.
+      setPuedeRegistrarInventario(
+        sesion.rol?.codigo === 'INVENTARIO',
+      )
+
+      if (
+        idSucursal !== null &&
+        (!Number.isInteger(idSucursal) ||
+          idSucursal < 1)
+      ) {
+        throw new Error(
+          'No se pudo determinar la sucursal del usuario.',
+        )
       }
 
-      const [inventariosRecibidos, medicamentosRecibidos, sucursalesRecibidas] =
-        await Promise.all([
-          idSucursal === null ? obtenerInventarios() : obtenerInventariosMiSucursal(),
-          obtenerMedicamentos(),
-          idSucursal === null ? obtenerSucursales() : Promise.resolve(null),
-        ])
+      const [
+        inventariosRecibidos,
+        medicamentosRecibidos,
+        sucursalesRecibidas,
+      ] = await Promise.all([
+        idSucursal === null
+          ? obtenerInventarios()
+          : obtenerInventariosMiSucursal(),
+
+        obtenerMedicamentos(),
+
+        idSucursal === null
+          ? obtenerSucursales()
+          : Promise.resolve(null),
+      ])
 
       if (idSucursal === null) {
         setInventarios(inventariosRecibidos)
-        setSucursales(sucursalesRecibidas ?? [])
+        setSucursales(
+          sucursalesRecibidas ?? [],
+        )
       } else {
         // La API ya devuelve solo los inventarios de la sucursal autenticada.
         // Usa la sesión como respaldo si la sucursal todavía no tiene inventarios.
-        const sucursalSesion = sesion.sucursal
-        const sucursalInventario = inventariosRecibidos[0]?.sucursal
+        const sucursalSesion =
+          sesion.sucursal
+
+        const sucursalInventario =
+          inventariosRecibidos[0]?.sucursal
+
         const sucursalAsignada: SucursalOpcion = {
           id_sucursal: idSucursal,
-          codigo: sucursalSesion?.codigo ?? sucursalInventario?.codigo ?? '',
+
+          codigo:
+            sucursalSesion?.codigo ??
+            sucursalInventario?.codigo ??
+            '',
+
           nombre:
             sucursalSesion?.nombre ??
             sucursalInventario?.nombre ??
             `Sucursal #${idSucursal}`,
         }
 
-        setInventarios(inventariosRecibidos)
-        setSucursales([sucursalAsignada])
+        setInventarios(
+          inventariosRecibidos,
+        )
+
+        setSucursales([
+          sucursalAsignada,
+        ])
       }
 
-      setMedicamentos(medicamentosRecibidos)
-      setIdSucursalAsignada(idSucursal)
+      setMedicamentos(
+        medicamentosRecibidos,
+      )
+
+      setIdSucursalAsignada(
+        idSucursal,
+      )
+
       setFiltroSucursal('TODAS')
       setSesionVerificada(true)
     } catch (error: unknown) {
@@ -154,9 +231,20 @@ function ControlInventario() {
       setInventarios([])
       setSucursales([])
       setMedicamentos([])
+
       setIdSucursalAsignada(null)
       setSesionVerificada(false)
-      setError(obtenerMensajeError(error, 'Ocurrió un error al cargar la información de inventario.'))
+
+      setPuedeRegistrarInventario(
+        false,
+      )
+
+      setError(
+        obtenerMensajeError(
+          error,
+          'Ocurrió un error al cargar la información de inventario.',
+        ),
+      )
     } finally {
       setCargando(false)
     }
@@ -166,82 +254,154 @@ function ControlInventario() {
     void cargarDatos()
   }, [cargarDatos])
 
-  const obtenerNivelStock = (inventario: Inventario): FiltroStock => {
-    if (inventario.stock_actual === 0) {
+  const obtenerNivelStock = (
+    inventario: Inventario,
+  ): FiltroStock => {
+    if (
+      inventario.stock_actual === 0
+    ) {
       return 'SIN_STOCK'
     }
 
-    if (inventario.stock_actual <= inventario.stock_minimo) {
+    if (
+      inventario.stock_actual <=
+      inventario.stock_minimo
+    ) {
       return 'BAJO'
     }
 
     return 'NORMAL'
   }
 
-  const inventariosFiltrados = useMemo(() => {
-    const texto = busqueda.trim().toLowerCase()
+  const inventariosFiltrados =
+    useMemo(() => {
+      const texto =
+        busqueda.trim().toLowerCase()
 
-    return inventarios.filter((inventario) => {
-      const nivel = obtenerNivelStock(inventario)
+      return inventarios.filter(
+        (inventario) => {
+          const nivel =
+            obtenerNivelStock(
+              inventario,
+            )
 
-      const coincideSucursal = idSucursalAsignada !== null
-        ? inventario.id_sucursal === idSucursalAsignada
-        : filtroSucursal === 'TODAS' ||
-          inventario.id_sucursal === Number(filtroSucursal)
+          const coincideSucursal =
+            idSucursalAsignada !== null
+              ? inventario.id_sucursal ===
+                idSucursalAsignada
+              : filtroSucursal ===
+                  'TODAS' ||
+                inventario.id_sucursal ===
+                  Number(
+                    filtroSucursal,
+                  )
 
-      const coincideStock =
-        filtroStock === 'TODOS' || nivel === filtroStock
+          const coincideStock =
+            filtroStock === 'TODOS' ||
+            nivel === filtroStock
 
-      const coincideBusqueda =
-        texto === '' ||
-        inventario.medicamento.codigo.toLowerCase().includes(texto) ||
-        inventario.medicamento.nombre.toLowerCase().includes(texto) ||
-        inventario.medicamento.principio_activo
-          .toLowerCase()
-          .includes(texto) ||
-        inventario.medicamento.laboratorio
-          .toLowerCase()
-          .includes(texto) ||
-        inventario.sucursal.codigo.toLowerCase().includes(texto) ||
-        inventario.sucursal.nombre.toLowerCase().includes(texto)
+          const coincideBusqueda =
+            texto === '' ||
+            inventario.medicamento.codigo
+              .toLowerCase()
+              .includes(texto) ||
+            inventario.medicamento.nombre
+              .toLowerCase()
+              .includes(texto) ||
+            inventario.medicamento.principio_activo
+              .toLowerCase()
+              .includes(texto) ||
+            inventario.medicamento.laboratorio
+              .toLowerCase()
+              .includes(texto) ||
+            inventario.sucursal.codigo
+              .toLowerCase()
+              .includes(texto) ||
+            inventario.sucursal.nombre
+              .toLowerCase()
+              .includes(texto)
 
-      return coincideSucursal && coincideStock && coincideBusqueda
-    })
-  }, [inventarios, busqueda, filtroSucursal, filtroStock, idSucursalAsignada])
+          return (
+            coincideSucursal &&
+            coincideStock &&
+            coincideBusqueda
+          )
+        },
+      )
+    }, [
+      inventarios,
+      busqueda,
+      filtroSucursal,
+      filtroStock,
+      idSucursalAsignada,
+    ])
 
-  const totalRegistros = inventarios.length
+  const totalRegistros =
+    inventarios.length
 
-  const unidadesDisponibles = inventarios.reduce(
-    (total, inventario) => total + inventario.stock_actual,
-    0,
-  )
+  const unidadesDisponibles =
+    inventarios.reduce(
+      (total, inventario) =>
+        total +
+        inventario.stock_actual,
+      0,
+    )
 
-  const inventariosBajos = inventarios.filter(
-    (inventario) =>
-      inventario.stock_actual > 0 &&
-      inventario.stock_actual <= inventario.stock_minimo,
-  ).length
+  const inventariosBajos =
+    inventarios.filter(
+      (inventario) =>
+        inventario.stock_actual > 0 &&
+        inventario.stock_actual <=
+          inventario.stock_minimo,
+    ).length
 
-  const inventariosSinStock = inventarios.filter(
-    (inventario) => inventario.stock_actual === 0,
-  ).length
+  const inventariosSinStock =
+    inventarios.filter(
+      (inventario) =>
+        inventario.stock_actual === 0,
+    ).length
 
   const abrirNuevoInventario = () => {
-    if (!sesionVerificada || cargando || error) return
+    if (
+      !sesionVerificada ||
+      cargando ||
+      error ||
+      !puedeRegistrarInventario
+    ) {
+      return
+    }
+
     setInventarioEditando(null)
     setErrorFormulario('')
     setFormularioAbierto(true)
   }
 
-  const abrirEditarInventario = (inventario: Inventario) => {
-    if (!sesionVerificada || cargando) return
-
-    if (idSucursalAsignada !== null && inventario.id_sucursal !== idSucursalAsignada) {
-      setError('No puedes administrar inventarios de otra sucursal.')
+  const abrirEditarInventario = (
+    inventario: Inventario,
+  ) => {
+    if (
+      !sesionVerificada ||
+      cargando
+    ) {
       return
     }
 
-    setInventarioEditando(inventario)
+    if (
+      idSucursalAsignada !== null &&
+      inventario.id_sucursal !==
+        idSucursalAsignada
+    ) {
+      setError(
+        'No puedes administrar inventarios de otra sucursal.',
+      )
+
+      return
+    }
+
+    setInventarioEditando(
+      inventario,
+    )
+
     setErrorFormulario('')
     setFormularioAbierto(true)
   }
@@ -257,10 +417,15 @@ function ControlInventario() {
   }
 
   const guardarInventario = async (
-    datos: CrearInventario | ActualizarInventario,
+    datos:
+      | CrearInventario
+      | ActualizarInventario,
   ) => {
     if (!sesionVerificada) {
-      setErrorFormulario('No se ha podido validar la sesión del usuario.')
+      setErrorFormulario(
+        'No se ha podido validar la sesión del usuario.',
+      )
+
       return
     }
 
@@ -271,9 +436,12 @@ function ControlInventario() {
       if (inventarioEditando) {
         if (
           idSucursalAsignada !== null &&
-          inventarioEditando.id_sucursal !== idSucursalAsignada
+          inventarioEditando.id_sucursal !==
+            idSucursalAsignada
         ) {
-          throw new Error('No puedes editar inventarios de otra sucursal.')
+          throw new Error(
+            'No puedes editar inventarios de otra sucursal.',
+          )
         }
 
         await actualizarInventario(
@@ -281,10 +449,15 @@ function ControlInventario() {
           datos as ActualizarInventario,
         )
       } else {
-        const datosCreacion = datos as CrearInventario
+        const datosCreacion =
+          datos as CrearInventario
+
         await crearInventario({
           ...datosCreacion,
-          id_sucursal: idSucursalAsignada ?? datosCreacion.id_sucursal,
+
+          id_sucursal:
+            idSucursalAsignada ??
+            datosCreacion.id_sucursal,
         })
       }
 
@@ -296,6 +469,7 @@ function ControlInventario() {
       setErrorFormulario(
         obtenerMensajeError(
           error,
+
           inventarioEditando
             ? 'Ocurrió un error al actualizar el inventario.'
             : 'Ocurrió un error al registrar el inventario.',
@@ -309,10 +483,15 @@ function ControlInventario() {
   return (
     <Stack spacing={3}>
       <Stack
-        direction={{ xs: 'column', md: 'row' }}
+        direction={{
+          xs: 'column',
+          md: 'row',
+        }}
         spacing={2}
         sx={{
-          justifyContent: 'space-between',
+          justifyContent:
+            'space-between',
+
           alignItems: {
             xs: 'flex-start',
             md: 'center',
@@ -320,88 +499,152 @@ function ControlInventario() {
         }}
       >
         <Box>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontWeight: 800,
+            }}
+          >
             Inventario
           </Typography>
 
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            {idSucursalAsignada === null
+          <Typography
+            sx={{
+              mt: 0.5,
+              color: 'text.secondary',
+            }}
+          >
+            {idSucursalAsignada ===
+            null
               ? 'Consulta y controla las existencias de medicamentos por sucursal.'
               : `Consulta y controla las existencias de ${sucursales[0]?.nombre ?? 'tu sucursal'}.`}
           </Typography>
         </Box>
 
-        <Stack direction="row" spacing={1.5}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+        >
           <Button
             variant="outlined"
-            startIcon={<RefreshRoundedIcon />}
+            startIcon={
+              <RefreshRoundedIcon />
+            }
             onClick={cargarDatos}
             disabled={cargando}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+            }}
           >
             Actualizar
           </Button>
 
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={abrirNuevoInventario}
-            disabled={cargando || !sesionVerificada || Boolean(error)}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            Registrar inventario
-          </Button>
+          {puedeRegistrarInventario && (
+            <Button
+              variant="contained"
+              startIcon={
+                <AddRoundedIcon />
+              }
+              onClick={
+                abrirNuevoInventario
+              }
+              disabled={
+                cargando ||
+                !sesionVerificada ||
+                Boolean(error)
+              }
+              sx={{
+                textTransform:
+                  'none',
+                fontWeight: 600,
+              }}
+            >
+              Registrar inventario
+            </Button>
+          )}
         </Stack>
       </Stack>
 
-      {cargando && <LinearProgress aria-label="Cargando inventarios" />}
+      {cargando && (
+        <LinearProgress
+          aria-label="Cargando inventarios"
+        />
+      )}
 
-      {error && <Alert severity="error">{error}</Alert>}
+      {error && (
+        <Alert severity="error">
+          {error}
+        </Alert>
+      )}
 
       <Box
         sx={{
           display: 'grid',
+
           gridTemplateColumns: {
             xs: '1fr',
             sm: 'repeat(2, 1fr)',
             xl: 'repeat(4, 1fr)',
           },
+
           gap: 2,
         }}
       >
         <ResumenInventario
           titulo="Registros de inventario"
           valor={totalRegistros}
-          icono={<InventoryRoundedIcon />}
+          icono={
+            <InventoryRoundedIcon />
+          }
           color="primary.main"
         />
 
         <ResumenInventario
           titulo="Unidades disponibles"
-          valor={unidadesDisponibles}
-          icono={<ShoppingCartRoundedIcon />}
+          valor={
+            unidadesDisponibles
+          }
+          icono={
+            <ShoppingCartRoundedIcon />
+          }
           color="success.main"
         />
 
         <ResumenInventario
           titulo="Stock bajo"
           valor={inventariosBajos}
-          icono={<WarningAmberRoundedIcon />}
+          icono={
+            <WarningAmberRoundedIcon />
+          }
           color="warning.main"
         />
 
         <ResumenInventario
           titulo="Sin existencias"
-          valor={inventariosSinStock}
-          icono={<ErrorOutlineRoundedIcon />}
+          valor={
+            inventariosSinStock
+          }
+          icono={
+            <ErrorOutlineRoundedIcon />
+          }
           color="error.main"
         />
       </Box>
 
-      <Card variant="outlined" sx={{ borderRadius: 3 }}>
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 3,
+        }}
+      >
         <CardContent>
           <Stack
-            direction={{ xs: 'column', lg: 'row' }}
+            direction={{
+              xs: 'column',
+              lg: 'row',
+            }}
             spacing={2}
             sx={{
               alignItems: {
@@ -413,7 +656,11 @@ function ControlInventario() {
             <TextField
               placeholder="Buscar medicamento, código, laboratorio o sucursal..."
               value={busqueda}
-              onChange={(event) => setBusqueda(event.target.value)}
+              onChange={(event) =>
+                setBusqueda(
+                  event.target.value,
+                )
+              }
               fullWidth
               slotProps={{
                 input: {
@@ -426,8 +673,13 @@ function ControlInventario() {
               }}
             />
 
-            {idSucursalAsignada === null && (
-              <FormControl sx={{ minWidth: 220 }}>
+            {idSucursalAsignada ===
+              null && (
+              <FormControl
+                sx={{
+                  minWidth: 220,
+                }}
+              >
                 <InputLabel id="filtro-sucursal-inventario-label">
                   Sucursal
                 </InputLabel>
@@ -435,24 +687,50 @@ function ControlInventario() {
                 <Select
                   labelId="filtro-sucursal-inventario-label"
                   label="Sucursal"
-                  value={filtroSucursal}
-                  onChange={(event) => setFiltroSucursal(event.target.value)}
+                  value={
+                    filtroSucursal
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setFiltroSucursal(
+                      event.target
+                        .value,
+                    )
+                  }
                 >
-                  <MenuItem value="TODAS">Todas las sucursales</MenuItem>
+                  <MenuItem value="TODAS">
+                    Todas las
+                    sucursales
+                  </MenuItem>
 
-                  {sucursales.map((sucursal) => (
-                    <MenuItem
-                      key={sucursal.id_sucursal}
-                      value={sucursal.id_sucursal.toString()}
-                    >
-                      {sucursal.codigo} - {sucursal.nombre}
-                    </MenuItem>
-                  ))}
+                  {sucursales.map(
+                    (sucursal) => (
+                      <MenuItem
+                        key={
+                          sucursal.id_sucursal
+                        }
+                        value={sucursal.id_sucursal.toString()}
+                      >
+                        {
+                          sucursal.codigo
+                        }{' '}
+                        -{' '}
+                        {
+                          sucursal.nombre
+                        }
+                      </MenuItem>
+                    ),
+                  )}
                 </Select>
               </FormControl>
             )}
 
-            <FormControl sx={{ minWidth: 190 }}>
+            <FormControl
+              sx={{
+                minWidth: 190,
+              }}
+            >
               <InputLabel id="filtro-stock-inventario-label">
                 Nivel de stock
               </InputLabel>
@@ -462,88 +740,157 @@ function ControlInventario() {
                 label="Nivel de stock"
                 value={filtroStock}
                 onChange={(event) =>
-                  setFiltroStock(event.target.value as FiltroStock)
+                  setFiltroStock(
+                    event.target
+                      .value as FiltroStock,
+                  )
                 }
               >
-                <MenuItem value="TODOS">Todos</MenuItem>
-                <MenuItem value="NORMAL">Stock normal</MenuItem>
-                <MenuItem value="BAJO">Stock bajo</MenuItem>
-                <MenuItem value="SIN_STOCK">Sin existencias</MenuItem>
+                <MenuItem value="TODOS">
+                  Todos
+                </MenuItem>
+
+                <MenuItem value="NORMAL">
+                  Stock normal
+                </MenuItem>
+
+                <MenuItem value="BAJO">
+                  Stock bajo
+                </MenuItem>
+
+                <MenuItem value="SIN_STOCK">
+                  Sin existencias
+                </MenuItem>
               </Select>
             </FormControl>
           </Stack>
         </CardContent>
       </Card>
 
-      {!cargando && inventariosFiltrados.length > 0 && (
-        <>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={1}
-            sx={{
-              justifyContent: 'space-between',
-              alignItems: {
-                xs: 'flex-start',
-                sm: 'center',
-              },
-            }}
-          >
-            <Typography color="text.secondary">
-              Mostrando {inventariosFiltrados.length} de {inventarios.length}{' '}
-              registros de inventario.
-            </Typography>
+      {!cargando &&
+        inventariosFiltrados.length >
+          0 && (
+          <>
+            <Stack
+              direction={{
+                xs: 'column',
+                sm: 'row',
+              }}
+              spacing={1}
+              sx={{
+                justifyContent:
+                  'space-between',
 
-            <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
-              {filtroSucursal !== 'TODAS' && (
-                <Chip
-                  label="Sucursal filtrada"
-                  size="small"
-                  onDelete={() => setFiltroSucursal('TODAS')}
-                />
-              )}
+                alignItems: {
+                  xs: 'flex-start',
+                  sm: 'center',
+                },
+              }}
+            >
+              <Typography
+                sx={{
+                  color:
+                    'text.secondary',
+                }}
+              >
+                Mostrando{' '}
+                {
+                  inventariosFiltrados.length
+                }{' '}
+                de{' '}
+                {inventarios.length}{' '}
+                registros de
+                inventario.
+              </Typography>
 
-              {filtroStock !== 'TODOS' && (
-                <Chip
-                  label={
-                    filtroStock === 'NORMAL'
-                      ? 'Stock normal'
-                      : filtroStock === 'BAJO'
-                        ? 'Stock bajo'
-                        : 'Sin existencias'
-                  }
-                  size="small"
-                  onDelete={() => setFiltroStock('TODOS')}
-                />
-              )}
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  flexWrap: 'wrap',
+                }}
+              >
+                {filtroSucursal !==
+                  'TODAS' && (
+                  <Chip
+                    label="Sucursal filtrada"
+                    size="small"
+                    onDelete={() =>
+                      setFiltroSucursal(
+                        'TODAS',
+                      )
+                    }
+                  />
+                )}
+
+                {filtroStock !==
+                  'TODOS' && (
+                  <Chip
+                    label={
+                      filtroStock ===
+                      'NORMAL'
+                        ? 'Stock normal'
+                        : filtroStock ===
+                            'BAJO'
+                          ? 'Stock bajo'
+                          : 'Sin existencias'
+                    }
+                    size="small"
+                    onDelete={() =>
+                      setFiltroStock(
+                        'TODOS',
+                      )
+                    }
+                  />
+                )}
+              </Stack>
             </Stack>
-          </Stack>
 
-          <InventariosTable
-            inventarios={inventariosFiltrados}
-            onEditar={abrirEditarInventario}
-          />
-        </>
-      )}
+            <InventariosTable
+              inventarios={
+                inventariosFiltrados
+              }
+              onEditar={
+                abrirEditarInventario
+              }
+            />
+          </>
+        )}
 
-      {!cargando && inventariosFiltrados.length === 0 && !error && (
-        <Alert severity="info">
-          {inventarios.length === 0
-            ? 'No hay inventarios registrados.'
-            : 'No se encontraron registros que coincidan con los filtros aplicados.'}
-        </Alert>
-      )}
+      {!cargando &&
+        inventariosFiltrados.length ===
+          0 &&
+        !error && (
+          <Alert severity="info">
+            {inventarios.length === 0
+              ? 'No hay inventarios registrados.'
+              : 'No se encontraron registros que coincidan con los filtros aplicados.'}
+          </Alert>
+        )}
 
       <InventarioForm
-        abierto={formularioAbierto}
-        inventario={inventarioEditando}
+        abierto={
+          formularioAbierto
+        }
+        inventario={
+          inventarioEditando
+        }
         inventarios={inventarios}
         sucursales={sucursales}
-        idSucursalAsignada={idSucursalAsignada}
-        medicamentos={medicamentos}
+        idSucursalAsignada={
+          idSucursalAsignada
+        }
+        medicamentos={
+          medicamentos
+        }
         guardando={guardando}
         error={errorFormulario}
-        onCerrar={cerrarFormulario}
-        onGuardar={guardarInventario}
+        onCerrar={
+          cerrarFormulario
+        }
+        onGuardar={
+          guardarInventario
+        }
       />
     </Stack>
   )
@@ -571,22 +918,40 @@ function ResumenInventario({
 
         '&:hover': {
           boxShadow: 3,
-          transform: 'translateY(-2px)',
+
+          transform:
+            'translateY(-2px)',
         },
       }}
     >
       <CardContent>
-        <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+        <Stack
+          direction="row"
+          spacing={2}
+          sx={{
+            alignItems: 'center',
+          }}
+        >
           <Box
             sx={{
               width: 50,
               height: 50,
+
               borderRadius: 2.5,
+
               bgcolor: color,
-              color: 'common.white',
+
+              color:
+                'common.white',
+
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+
+              alignItems:
+                'center',
+
+              justifyContent:
+                'center',
+
               flexShrink: 0,
             }}
           >
@@ -594,11 +959,22 @@ function ResumenInventario({
           </Box>
 
           <Box>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              sx={{
+                color:
+                  'text.secondary',
+              }}
+            >
               {titulo}
             </Typography>
 
-            <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+              }}
+            >
               {valor}
             </Typography>
           </Box>

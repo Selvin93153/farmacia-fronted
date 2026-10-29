@@ -52,6 +52,7 @@ export interface UsuarioRegistraPedido {
 export interface Pedido {
   id_pedido: number
   id_cliente: number
+  id_sucursal_origen: number | null
   id_sucursal_asignada: number | null
   id_forma_pago: number | null
   id_usuario_registra: number | null
@@ -63,6 +64,7 @@ export interface Pedido {
   total: number
   estado: EstadoPedido | string
   cliente: ClientePedido
+  sucursal_origen: SucursalPedido | null
   sucursal_asignada: SucursalPedido | null
   forma_pago: FormaPagoPedido | null
   usuario_registra?: UsuarioRegistraPedido | null
@@ -139,9 +141,25 @@ export async function obtenerPedidos(): Promise<Pedido[]> {
   return respuesta.data
 }
 
+// Obtiene únicamente los pedidos registrados desde la sucursal del usuario autenticado.
+export async function obtenerPedidosMiSucursal(): Promise<Pedido[]> {
+  const respuesta = await api.get<Pedido[]>('/pedidos/mi-sucursal')
+
+  if (!Array.isArray(respuesta.data)) {
+    throw new Error(
+      'El backend no devolvió una lista de pedidos de la sucursal.',
+    )
+  }
+
+  return respuesta.data
+}
+
 // Registra un pedido nuevo en estado BORRADOR.
-export async function crearPedido(datos: CrearPedido): Promise<Pedido> {
+export async function crearPedido(
+  datos: CrearPedido,
+): Promise<Pedido> {
   const respuesta = await api.post<Pedido>('/pedidos', datos)
+
   return respuesta.data
 }
 
@@ -150,21 +168,33 @@ export async function actualizarPedido(
   idPedido: number,
   datos: ActualizarPedido,
 ): Promise<Pedido> {
-  const respuesta = await api.patch<Pedido>(`/pedidos/${idPedido}`, datos)
+  const respuesta = await api.patch<Pedido>(
+    `/pedidos/${idPedido}`,
+    datos,
+  )
+
   return respuesta.data
 }
 
 // Elimina un pedido mientras permanezca en BORRADOR.
-export async function eliminarPedido(idPedido: number): Promise<void> {
+export async function eliminarPedido(
+  idPedido: number,
+): Promise<void> {
   await api.delete(`/pedidos/${idPedido}`)
 }
 
 // Obtiene los medicamentos agregados a un pedido.
-export async function obtenerDetallesPedido(idPedido: number): Promise<DetallePedido[]> {
-  const respuesta = await api.get<DetallePedido[]>(`/detalles-pedido/pedido/${idPedido}`)
+export async function obtenerDetallesPedido(
+  idPedido: number,
+): Promise<DetallePedido[]> {
+  const respuesta = await api.get<DetallePedido[]>(
+    `/detalles-pedido/pedido/${idPedido}`,
+  )
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error('El backend no devolvió los detalles del pedido.')
+    throw new Error(
+      'El backend no devolvió los detalles del pedido.',
+    )
   }
 
   return respuesta.data
@@ -176,11 +206,14 @@ export async function agregarDetallePedido(
   idMedicamento: number,
   cantidad: number,
 ): Promise<DetallePedido> {
-  const respuesta = await api.post<DetallePedido>('/detalles-pedido', {
-    id_pedido: idPedido,
-    id_medicamento: idMedicamento,
-    cantidad,
-  })
+  const respuesta = await api.post<DetallePedido>(
+    '/detalles-pedido',
+    {
+      id_pedido: idPedido,
+      id_medicamento: idMedicamento,
+      cantidad,
+    },
+  )
 
   return respuesta.data
 }
@@ -192,14 +225,18 @@ export async function actualizarDetallePedido(
 ): Promise<DetallePedido> {
   const respuesta = await api.patch<DetallePedido>(
     `/detalles-pedido/${idDetallePedido}`,
-    { cantidad },
+    {
+      cantidad,
+    },
   )
 
   return respuesta.data
 }
 
 // Elimina un medicamento del pedido en BORRADOR.
-export async function eliminarDetallePedido(idDetallePedido: number): Promise<void> {
+export async function eliminarDetallePedido(
+  idDetallePedido: number,
+): Promise<void> {
   await api.delete(`/detalles-pedido/${idDetallePedido}`)
 }
 
@@ -212,7 +249,9 @@ export async function obtenerSucursalesDisponibles(
   )
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error('El backend no devolvió las sucursales disponibles.')
+    throw new Error(
+      'El backend no devolvió las sucursales disponibles.',
+    )
   }
 
   return respuesta.data
@@ -223,47 +262,72 @@ export async function asignarSucursalPedido(
   idPedido: number,
   idSucursal: number,
 ): Promise<Pedido> {
-  const respuesta = await api.patch<Pedido>(`/pedidos/${idPedido}/asignar-sucursal`, {
-    id_sucursal: idSucursal,
-  })
+  const respuesta = await api.patch<Pedido>(
+    `/pedidos/${idPedido}/asignar-sucursal`,
+    {
+      id_sucursal: idSucursal,
+    },
+  )
 
   return respuesta.data
 }
 
 // Obtiene los clientes disponibles para registrar un pedido.
-export async function obtenerClientesPedido(): Promise<ClientePedido[]> {
+export async function obtenerClientesPedido(): Promise<
+  ClientePedido[]
+> {
   const respuesta = await api.get<ClientePedido[]>('/clientes')
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error('El backend no devolvió una lista de clientes.')
+    throw new Error(
+      'El backend no devolvió una lista de clientes.',
+    )
   }
 
   return respuesta.data
 }
 
 // Registra un cliente sin abandonar el flujo de creación del pedido.
-export async function crearClientePedido(datos: CrearClientePedido): Promise<ClientePedido> {
-  const respuesta = await api.post<ClientePedido>('/clientes', datos)
+export async function crearClientePedido(
+  datos: CrearClientePedido,
+): Promise<ClientePedido> {
+  const respuesta = await api.post<ClientePedido>(
+    '/clientes',
+    datos,
+  )
+
   return respuesta.data
 }
 
 // Obtiene las formas de pago configuradas.
-export async function obtenerFormasPagoPedido(): Promise<FormaPagoPedido[]> {
-  const respuesta = await api.get<FormaPagoPedido[]>('/formas-pago')
+export async function obtenerFormasPagoPedido(): Promise<
+  FormaPagoPedido[]
+> {
+  const respuesta = await api.get<FormaPagoPedido[]>(
+    '/formas-pago',
+  )
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error('El backend no devolvió las formas de pago.')
+    throw new Error(
+      'El backend no devolvió las formas de pago.',
+    )
   }
 
   return respuesta.data
 }
 
 // Obtiene los medicamentos disponibles para agregarlos al pedido.
-export async function obtenerMedicamentosPedido(): Promise<MedicamentoPedido[]> {
-  const respuesta = await api.get<MedicamentoPedido[]>('/medicamentos')
+export async function obtenerMedicamentosPedido(): Promise<
+  MedicamentoPedido[]
+> {
+  const respuesta = await api.get<MedicamentoPedido[]>(
+    '/medicamentos',
+  )
 
   if (!Array.isArray(respuesta.data)) {
-    throw new Error('El backend no devolvió una lista de medicamentos.')
+    throw new Error(
+      'El backend no devolvió una lista de medicamentos.',
+    )
   }
 
   return respuesta.data

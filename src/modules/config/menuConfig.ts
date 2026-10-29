@@ -116,7 +116,6 @@ export const menuConfig: SeccionMenu[] = [
         ruta: '/app/medicamentos',
         icono: MedicationRoundedIcon,
         roles: [
-          'ADMIN_SUCURSAL',
           'INVENTARIO',
           'TRABAJADOR_SUCURSAL',
         ],
@@ -178,7 +177,6 @@ export const menuConfig: SeccionMenu[] = [
         ruta: '/app/planillas',
         icono: ReceiptLongRoundedIcon,
         roles: [
-          'ADMIN_SUCURSAL',
           'RRHH',
         ],
       },

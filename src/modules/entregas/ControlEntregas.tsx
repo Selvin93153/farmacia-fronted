@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import axios from 'axios'
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Card,
@@ -76,6 +77,7 @@ function ControlEntregas() {
   const [pedidos, setPedidos] = useState<PedidoEntrega[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [idSucursalSesion, setIdSucursalSesion] = useState<number | null>(null)
+  const [puedeCrearEntrega, setPuedeCrearEntrega] = useState(false)
   const [cargando, setCargando] = useState(true)
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState('')
@@ -112,6 +114,11 @@ function ControlEntregas() {
     try {
       const sesion = await obtenerSesion()
       const idSucursal = sesion.id_sucursal
+
+      // Solo el trabajador de sucursal puede crear nuevas entregas desde esta vista.
+      setPuedeCrearEntrega(
+        sesion.rol?.codigo === 'TRABAJADOR_SUCURSAL',
+      )
 
       const [entregasRecibidas, pedidosRecibidos, usuariosRecibidos] = await Promise.all([
         obtenerEntregas(),
@@ -416,29 +423,48 @@ function ControlEntregas() {
           >
             Actualizar
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={() => {
-              setIdPedidoNuevo('')
-              setErrorDialogo('')
-              setCrearAbierto(true)
-            }}
-            disabled={cargando || procesando || pedidosDisponibles.length === 0}
-            sx={{ textTransform: 'none', fontWeight: 700 }}
-          >
-            Crear entrega
-          </Button>
+          {puedeCrearEntrega && (
+            <Badge
+              badgeContent={pedidosDisponibles.length}
+              color="warning"
+              overlap="rectangular"
+              max={99}
+            >
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={() => {
+                  setIdPedidoNuevo('')
+                  setErrorDialogo('')
+                  setCrearAbierto(true)
+                }}
+                disabled={
+                  cargando ||
+                  procesando ||
+                  pedidosDisponibles.length === 0
+                }
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 700,
+                }}
+              >
+                Crear entrega
+              </Button>
+            </Badge>
+          )}
         </Stack>
       </Stack>
 
       {cargando && <LinearProgress aria-label="Cargando entregas" />}
       {error && <Alert severity="error">{error}</Alert>}
-      {!cargando && pedidosDisponibles.length === 0 && (
-        <Alert severity="info">
-          No hay pedidos confirmados pendientes de crear entrega en el alcance actual.
-        </Alert>
-      )}
+      {!cargando &&
+        puedeCrearEntrega &&
+        pedidosDisponibles.length === 0 && (
+          <Alert severity="info">
+            No hay pedidos confirmados pendientes de crear entrega
+            en el alcance actual.
+          </Alert>
+        )}
       {!cargando && retrasadasEnRuta > 0 && (
         <Alert severity="warning">
           Hay {retrasadasEnRuta} {retrasadasEnRuta === 1 ? 'entrega en ruta que superó' : 'entregas en ruta que superaron'} el tiempo estimado.

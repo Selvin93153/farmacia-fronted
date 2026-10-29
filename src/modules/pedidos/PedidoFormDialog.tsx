@@ -18,6 +18,7 @@ import {
   Typography,
 } from '@mui/material'
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
+import MapaEntregaPedido from '../pedidos/MapaEntregaPedido'
 import type {
   CanalPedido,
   ClientePedido,
@@ -255,28 +256,17 @@ export default function PedidoFormDialog({
                   slotProps={{ htmlInput: { maxLength: 300 } }}
                 />
 
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                  <TextField
-                    label="Latitud"
-                    value={latitudEntrega}
-                    onChange={(event) => setLatitudEntrega(event.target.value)}
-                    required
-                    fullWidth
-                    placeholder="14.6349"
-                  />
-
-                  <TextField
-                    label="Longitud"
-                    value={longitudEntrega}
-                    onChange={(event) => setLongitudEntrega(event.target.value)}
-                    required
-                    fullWidth
-                    placeholder="-90.5069"
-                  />
-                </Stack>
+                <MapaEntregaPedido
+                  latitud={latitudEntrega}
+                  longitud={longitudEntrega}
+                  onSeleccionar={(latitud, longitud) => {
+                    setLatitudEntrega(latitud)
+                    setLongitudEntrega(longitud)
+                  }}
+                />
 
                 <Alert severity="info" variant="outlined">
-                  Las coordenadas se utilizan para ordenar las sucursales por distancia y calcular el tiempo estimado de entrega.
+                  La ubicación seleccionada se utiliza para ordenar las sucursales por distancia y calcular el tiempo estimado de entrega.
                 </Alert>
               </Stack>
             </Box>

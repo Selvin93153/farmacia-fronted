@@ -29,6 +29,7 @@ import DraftsRoundedIcon from '@mui/icons-material/DraftsRounded'
 import LocalShippingRoundedIcon from '@mui/icons-material/LocalShippingRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
+import { obtenerSesion } from '../auth/authService'
 import PedidoDetalleDialog from './PedidoDetalleDialog'
 import PedidoFormDialog from './PedidoFormDialog'
 import PedidosTable from './PedidosTable'
@@ -42,6 +43,7 @@ import {
   obtenerFormasPagoPedido,
   obtenerMedicamentosPedido,
   obtenerPedidos,
+  obtenerPedidosMiSucursal,
   type CanalPedido,
   type ClientePedido,
   type CrearClientePedido,
@@ -112,6 +114,7 @@ export default function ControlPedidos() {
   const [procesando, setProcesando] = useState(false)
   const [error, setError] = useState('')
   const [errorDialogo, setErrorDialogo] = useState('')
+  const [puedeCrearPedido, setPuedeCrearPedido] = useState(false)
 
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('TODOS')
@@ -132,14 +135,27 @@ export default function ControlPedidos() {
   const [eliminarAbierto, setEliminarAbierto] = useState(false)
   const [pedidoEliminar, setPedidoEliminar] = useState<Pedido | null>(null)
 
-  // Carga la información necesaria para administrar pedidos desde una sola vista.
+  // Carga la sesión y limita los pedidos al alcance de la sucursal del usuario.
   const cargarDatos = useCallback(async () => {
     setCargando(true)
     setError('')
 
     try {
-      const [pedidosRecibidos, clientesRecibidos, formasRecibidas, medicamentosRecibidos] = await Promise.all([
-        obtenerPedidos(),
+      const sesion = await obtenerSesion()
+
+      // Si la sesión tiene sucursal, el backend devuelve únicamente los pedidos creados allí.
+      const consultaPedidos =
+        sesion.id_sucursal === null
+          ? obtenerPedidos()
+          : obtenerPedidosMiSucursal()
+
+      const [
+        pedidosRecibidos,
+        clientesRecibidos,
+        formasRecibidas,
+        medicamentosRecibidos,
+      ] = await Promise.all([
+        consultaPedidos,
         obtenerClientesPedido(),
         obtenerFormasPagoPedido(),
         obtenerMedicamentosPedido(),
@@ -149,8 +165,18 @@ export default function ControlPedidos() {
       setClientes(clientesRecibidos)
       setFormasPago(formasRecibidas)
       setMedicamentos(medicamentosRecibidos)
+
+      // Solo el trabajador de sucursal puede iniciar un pedido nuevo desde esta vista.
+      setPuedeCrearPedido(
+        sesion.rol?.codigo === 'TRABAJADOR_SUCURSAL',
+      )
     } catch (errorDesconocido: unknown) {
-      setError(obtenerMensajeError(errorDesconocido, 'No se pudieron cargar los pedidos.'))
+      setError(
+        obtenerMensajeError(
+          errorDesconocido,
+          'No se pudieron cargar los pedidos.',
+        ),
+      )
     } finally {
       setCargando(false)
     }
@@ -318,9 +344,16 @@ export default function ControlPedidos() {
             <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => void cargarDatos()} disabled={cargando || procesando}>
               Actualizar
             </Button>
-            <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={abrirNuevo} disabled={cargando || procesando}>
-              Nuevo pedido
-            </Button>
+            {puedeCrearPedido && (
+              <Button
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                onClick={abrirNuevo}
+                disabled={cargando || procesando}
+              >
+                Nuevo pedido
+              </Button>
+            )}
           </Stack>
         </Stack>
 
@@ -495,3 +528,4 @@ export default function ControlPedidos() {
     </Box>
   )
 }
+

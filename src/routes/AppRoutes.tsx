@@ -102,7 +102,6 @@ function AppRoutes() {
             element={
               <RoleRoute
                 rolesPermitidos={[
-                  'ADMIN_SUCURSAL',
                   'INVENTARIO',
                   'TRABAJADOR_SUCURSAL',
                 ]}
@@ -145,7 +144,6 @@ function AppRoutes() {
             element={
               <RoleRoute
                 rolesPermitidos={[
-                  'ADMIN_SUCURSAL',
                   'RRHH',
                 ]}
               >
@@ -159,7 +157,6 @@ function AppRoutes() {
             element={
               <RoleRoute
                 rolesPermitidos={[
-                  'ADMIN_SUCURSAL',
                   'RRHH',
                 ]}
               >
@@ -229,6 +226,7 @@ function AppRoutes() {
               <RoleRoute
                 rolesPermitidos={[
                   'ADMIN_SISTEMA',
+                  'ADMIN_SUCURSAL'
                 ]}
               >
                 <ControlUsuario />
@@ -255,6 +253,7 @@ function AppRoutes() {
               <RoleRoute
                 rolesPermitidos={[
                   'ADMIN_SUCURSAL',
+                  
                 ]}
               >
                 <ControlActivoFijo />

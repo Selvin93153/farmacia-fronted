@@ -51,6 +51,9 @@ function ControlEmpleado() {
   const [errorFormulario, setErrorFormulario] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('TODOS')
+  const [filtroSucursal, setFiltroSucursal] = useState('TODAS')
+  const [puedeCrearEmpleado, setPuedeCrearEmpleado] = useState(false)
+  const [puedeFiltrarSucursal, setPuedeFiltrarSucursal] = useState(false)
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [empleadoEditando, setEmpleadoEditando] =
     useState<Empleado | null>(null)
@@ -83,10 +86,16 @@ function ControlEmpleado() {
     setSesionVerificada(false)
     setEmpleados([])
     setSucursales([])
+    setFiltroSucursal('TODAS')
 
     try {
       const sesion = await obtenerSesion()
       const idSucursal = sesion.id_sucursal
+
+      // RRHH puede crear empleados y consultar el personal por sucursal.
+      const esRRHH = sesion.rol?.codigo === 'RRHH'
+      setPuedeCrearEmpleado(esRRHH)
+      setPuedeFiltrarSucursal(esRRHH)
 
       if (
         idSucursal !== null &&
@@ -139,6 +148,11 @@ function ControlEmpleado() {
     return empleados.filter((empleado) => {
       const coincideEstado =
         filtroEstado === 'TODOS' || empleado.estado === filtroEstado
+
+      const coincideFiltroSucursal =
+        filtroSucursal === 'TODAS' ||
+        empleado.id_sucursal === Number(filtroSucursal)
+
       const coincideSucursal =
         empleado.sucursal?.nombre?.toLowerCase().includes(texto) ?? false
       const coincideBusqueda =
@@ -152,9 +166,9 @@ function ControlEmpleado() {
         empleado.puesto.toLowerCase().includes(texto) ||
         empleado.telefono.toLowerCase().includes(texto) ||
         coincideSucursal
-      return coincideEstado && coincideBusqueda
+      return coincideEstado && coincideFiltroSucursal && coincideBusqueda
     })
-  }, [empleados, busqueda, filtroEstado])
+  }, [empleados, busqueda, filtroEstado, filtroSucursal])
   const totalEmpleados = empleados.length
   const empleadosActivos = empleados.filter(
     (empleado) => empleado.estado === 'ACTIVO',
@@ -163,7 +177,7 @@ function ControlEmpleado() {
     (empleado) => empleado.estado === 'INACTIVO',
   ).length
   const abrirNuevoEmpleado = () => {
-    if (!sesionVerificada || cargando) return
+    if (!sesionVerificada || cargando || !puedeCrearEmpleado) return
     setEmpleadoEditando(null)
     setErrorFormulario('')
     setFormularioAbierto(true)
@@ -263,14 +277,16 @@ function ControlEmpleado() {
           >
             Actualizar
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={abrirNuevoEmpleado}
-            disabled={cargando || !sesionVerificada}
-          >
-            Nuevo empleado
-          </Button>
+          {puedeCrearEmpleado && (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={abrirNuevoEmpleado}
+              disabled={cargando || !sesionVerificada}
+            >
+              Nuevo empleado
+            </Button>
+          )}
         </Stack>
       </Stack>
       {cargando && <LinearProgress aria-label="Cargando empleados" />}
@@ -344,6 +360,35 @@ function ControlEmpleado() {
                 <MenuItem value="INACTIVO">Inactivos</MenuItem>
               </Select>
             </FormControl>
+
+            {puedeFiltrarSucursal && (
+              <FormControl sx={{ minWidth: 230 }}>
+                <InputLabel id="filtro-sucursal-empleado-label">
+                  Sucursal
+                </InputLabel>
+                <Select
+                  labelId="filtro-sucursal-empleado-label"
+                  label="Sucursal"
+                  value={filtroSucursal}
+                  onChange={(event) =>
+                    setFiltroSucursal(String(event.target.value))
+                  }
+                >
+                  <MenuItem value="TODAS">
+                    Todas las sucursales
+                  </MenuItem>
+
+                  {sucursales.map((sucursal) => (
+                    <MenuItem
+                      key={sucursal.id_sucursal}
+                      value={String(sucursal.id_sucursal)}
+                    >
+                      {sucursal.codigo} - {sucursal.nombre}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </Stack>
         </CardContent>
       </Card>
@@ -364,13 +409,34 @@ function ControlEmpleado() {
               Mostrando {empleadosFiltrados.length} de {empleados.length}{' '}
               empleados.
             </Typography>
-            {filtroEstado !== 'TODOS' && (
-              <Chip
-                label={`Filtro: ${filtroEstado}`}
-                size="small"
-                onDelete={() => setFiltroEstado('TODOS')}
-              />
-            )}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ flexWrap: 'wrap' }}
+            >
+              {filtroEstado !== 'TODOS' && (
+                <Chip
+                  label={`Estado: ${filtroEstado}`}
+                  size="small"
+                  onDelete={() => setFiltroEstado('TODOS')}
+                />
+              )}
+
+              {puedeFiltrarSucursal &&
+                filtroSucursal !== 'TODAS' && (
+                  <Chip
+                    label={`Sucursal: ${
+                      sucursales.find(
+                        (sucursal) =>
+                          sucursal.id_sucursal ===
+                          Number(filtroSucursal),
+                      )?.nombre ?? filtroSucursal
+                    }`}
+                    size="small"
+                    onDelete={() => setFiltroSucursal('TODAS')}
+                  />
+                )}
+            </Stack>
           </Stack>
           <EmpleadosTable
             empleados={empleadosFiltrados}
@@ -452,3 +518,4 @@ function ResumenCard({
   )
 }
 export default ControlEmpleado
+
