@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import {
   Alert,
   Autocomplete,
+  Box,
   Button,
   CircularProgress,
   Dialog,
@@ -23,6 +24,16 @@ import BusinessRoundedIcon from '@mui/icons-material/BusinessRounded'
 import LocationOnRoundedIcon from '@mui/icons-material/LocationOnRounded'
 import PhoneRoundedIcon from '@mui/icons-material/PhoneRounded'
 import StoreRoundedIcon from '@mui/icons-material/StoreRounded'
+
+import {
+  CircleMarker,
+  MapContainer,
+  TileLayer,
+  useMap,
+  useMapEvents,
+} from 'react-leaflet'
+
+import 'leaflet/dist/leaflet.css'
 
 import type { Municipio } from '../municipios/municipiosService'
 
@@ -56,6 +67,30 @@ interface FormularioSucursal {
   estado: 'ACTIVA' | 'INACTIVA'
 }
 
+interface SelectorMapaProps {
+  latitud: string
+  longitud: string
+  abierto: boolean
+  onSeleccionar: (
+    latitud: number,
+    longitud: number,
+  ) => void
+}
+
+interface EventosMapaProps {
+  onSeleccionar: (
+    latitud: number,
+    longitud: number,
+  ) => void
+}
+
+interface CentrarMapaProps {
+  latitud: number
+  longitud: number
+  zoom: number
+  abierto: boolean
+}
+
 const formularioInicial: FormularioSucursal = {
   id_municipio: '',
   codigo: '',
@@ -68,12 +103,176 @@ const formularioInicial: FormularioSucursal = {
   estado: 'ACTIVA',
 }
 
+// Centro aproximado de Guatemala para nuevas sucursales.
+const CENTRO_GUATEMALA: [number, number] = [
+  15.7835,
+  -90.2308,
+]
+
 const normalizarTexto = (texto: string) =>
   texto
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim()
+
+// Detecta el punto seleccionado por el usuario dentro del mapa.
+function EventosMapa({
+  onSeleccionar,
+}: EventosMapaProps) {
+  useMapEvents({
+    click(event) {
+      onSeleccionar(
+        event.latlng.lat,
+        event.latlng.lng,
+      )
+    },
+  })
+
+  return null
+}
+
+// Mantiene el mapa centrado en la ubicación actual de la sucursal.
+function CentrarMapa({
+  latitud,
+  longitud,
+  zoom,
+  abierto,
+}: CentrarMapaProps) {
+  const mapa = useMap()
+
+  useEffect(() => {
+    if (!abierto) {
+      return
+    }
+
+    mapa.setView(
+      [latitud, longitud],
+      zoom,
+    )
+
+    const temporizador = window.setTimeout(() => {
+      mapa.invalidateSize()
+    }, 200)
+
+    return () => {
+      window.clearTimeout(temporizador)
+    }
+  }, [
+    abierto,
+    latitud,
+    longitud,
+    mapa,
+    zoom,
+  ])
+
+  return null
+}
+
+// Permite seleccionar visualmente la ubicación geográfica de la sucursal.
+function SelectorMapa({
+  latitud,
+  longitud,
+  abierto,
+  onSeleccionar,
+}: SelectorMapaProps) {
+  const latitudNumero = Number(latitud)
+  const longitudNumero = Number(longitud)
+
+  const tieneUbicacion =
+    latitud.trim() !== '' &&
+    longitud.trim() !== '' &&
+    Number.isFinite(latitudNumero) &&
+    Number.isFinite(longitudNumero) &&
+    latitudNumero >= -90 &&
+    latitudNumero <= 90 &&
+    longitudNumero >= -180 &&
+    longitudNumero <= 180
+
+  const posicion: [number, number] =
+    tieneUbicacion
+      ? [latitudNumero, longitudNumero]
+      : CENTRO_GUATEMALA
+
+  const zoom = tieneUbicacion ? 16 : 7
+
+  return (
+    <Box>
+      <Box
+        sx={{
+          height: {
+            xs: 300,
+            md: 360,
+          },
+          width: '100%',
+          borderRadius: 2.5,
+          overflow: 'hidden',
+          border: 1,
+          borderColor: 'divider',
+
+          '& .leaflet-container': {
+            width: '100%',
+            height: '100%',
+          },
+        }}
+      >
+        <MapContainer
+          center={posicion}
+          zoom={zoom}
+          scrollWheelZoom={false}
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+        >
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+
+          <EventosMapa
+            onSeleccionar={onSeleccionar}
+          />
+
+          <CentrarMapa
+            latitud={posicion[0]}
+            longitud={posicion[1]}
+            zoom={zoom}
+            abierto={abierto}
+          />
+
+          {tieneUbicacion && (
+            <CircleMarker
+              center={[
+                latitudNumero,
+                longitudNumero,
+              ]}
+              radius={9}
+              pathOptions={{
+                color: '#00796b',
+                fillColor: '#00796b',
+                fillOpacity: 1,
+                weight: 3,
+              }}
+            />
+          )}
+        </MapContainer>
+      </Box>
+
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{
+          mt: 1,
+        }}
+      >
+        Haz clic en el mapa sobre la ubicación exacta de la
+        sucursal. Puedes mover y acercar el mapa para seleccionar
+        el punto con mayor precisión.
+      </Typography>
+    </Box>
+  )
+}
 
 function SucursalForm({
   abierto,
@@ -84,11 +283,13 @@ function SucursalForm({
   onCerrar,
   onGuardar,
 }: SucursalFormProps) {
-  const [formulario, setFormulario] = useState<FormularioSucursal>(
-    formularioInicial,
-  )
+  const [formulario, setFormulario] =
+    useState<FormularioSucursal>(
+      formularioInicial,
+    )
 
-  const [errorFormulario, setErrorFormulario] = useState('')
+  const [errorFormulario, setErrorFormulario] =
+    useState('')
 
   const editando = sucursal !== null
 
@@ -100,17 +301,32 @@ function SucursalForm({
 
     if (sucursal) {
       setFormulario({
-        id_municipio: sucursal.id_municipio.toString(),
-        codigo: sucursal.codigo,
-        nombre: sucursal.nombre,
+        id_municipio:
+          sucursal.id_municipio.toString(),
+
+        codigo:
+          sucursal.codigo,
+
+        nombre:
+          sucursal.nombre,
+
         tipo_sucursal:
           sucursal.tipo_sucursal === 'STAND'
             ? 'STAND'
             : 'FARMACIA',
-        direccion: sucursal.direccion,
-        latitud: sucursal.latitud,
-        longitud: sucursal.longitud,
-        telefono: sucursal.telefono,
+
+        direccion:
+          sucursal.direccion,
+
+        latitud:
+          sucursal.latitud,
+
+        longitud:
+          sucursal.longitud,
+
+        telefono:
+          sucursal.telefono,
+
         estado:
           sucursal.estado === 'INACTIVA' ||
           sucursal.estado === 'INACTIVO'
@@ -134,19 +350,46 @@ function SucursalForm({
     }))
   }
 
+  // Guarda automáticamente las coordenadas seleccionadas en el mapa.
+  const seleccionarUbicacion = (
+    latitud: number,
+    longitud: number,
+  ) => {
+    setFormulario((actual) => ({
+      ...actual,
+      latitud: latitud.toFixed(7),
+      longitud: longitud.toFixed(7),
+    }))
+
+    setErrorFormulario('')
+  }
+
   // Valida los datos y construye el DTO correspondiente para crear o editar.
   const manejarGuardar = async () => {
     setErrorFormulario('')
 
-    const codigo = formulario.codigo.trim()
-    const nombre = formulario.nombre.trim()
-    const direccion = formulario.direccion.trim()
-    const latitudTexto = formulario.latitud.trim()
-    const longitudTexto = formulario.longitud.trim()
-    const telefono = formulario.telefono.trim()
+    const codigo =
+      formulario.codigo.trim()
+
+    const nombre =
+      formulario.nombre.trim()
+
+    const direccion =
+      formulario.direccion.trim()
+
+    const latitudTexto =
+      formulario.latitud.trim()
+
+    const longitudTexto =
+      formulario.longitud.trim()
+
+    const telefono =
+      formulario.telefono.trim()
 
     if (!formulario.id_municipio) {
-      setErrorFormulario('Debes seleccionar un municipio.')
+      setErrorFormulario(
+        'Debes seleccionar un municipio.',
+      )
       return
     }
 
@@ -179,7 +422,9 @@ function SucursalForm({
     }
 
     if (!direccion) {
-      setErrorFormulario('Debes ingresar la dirección.')
+      setErrorFormulario(
+        'Debes ingresar la dirección.',
+      )
       return
     }
 
@@ -190,18 +435,18 @@ function SucursalForm({
       return
     }
 
-    if (!latitudTexto) {
-      setErrorFormulario('Debes ingresar la latitud.')
+    if (!latitudTexto || !longitudTexto) {
+      setErrorFormulario(
+        'Debes seleccionar la ubicación de la sucursal en el mapa.',
+      )
       return
     }
 
-    if (!longitudTexto) {
-      setErrorFormulario('Debes ingresar la longitud.')
-      return
-    }
+    const latitud =
+      Number(latitudTexto)
 
-    const latitud = Number(latitudTexto)
-    const longitud = Number(longitudTexto)
+    const longitud =
+      Number(longitudTexto)
 
     if (
       Number.isNaN(latitud) ||
@@ -209,7 +454,7 @@ function SucursalForm({
       latitud > 90
     ) {
       setErrorFormulario(
-        'La latitud debe ser un valor válido entre -90 y 90.',
+        'La latitud seleccionada no es válida.',
       )
       return
     }
@@ -220,13 +465,15 @@ function SucursalForm({
       longitud > 180
     ) {
       setErrorFormulario(
-        'La longitud debe ser un valor válido entre -180 y 180.',
+        'La longitud seleccionada no es válida.',
       )
       return
     }
 
     if (!telefono) {
-      setErrorFormulario('Debes ingresar el teléfono.')
+      setErrorFormulario(
+        'Debes ingresar el teléfono.',
+      )
       return
     }
 
@@ -239,15 +486,27 @@ function SucursalForm({
 
     if (editando) {
       const datos: ActualizarSucursal = {
-        id_municipio: Number(formulario.id_municipio),
+        id_municipio:
+          Number(formulario.id_municipio),
+
         codigo,
         nombre,
-        tipo_sucursal: formulario.tipo_sucursal,
+
+        tipo_sucursal:
+          formulario.tipo_sucursal,
+
         direccion,
-        latitud: latitudTexto,
-        longitud: longitudTexto,
+
+        latitud:
+          latitudTexto,
+
+        longitud:
+          longitudTexto,
+
         telefono,
-        estado: formulario.estado,
+
+        estado:
+          formulario.estado,
       }
 
       await onGuardar(datos)
@@ -255,22 +514,34 @@ function SucursalForm({
     }
 
     const datos: CrearSucursal = {
-      id_municipio: Number(formulario.id_municipio),
+      id_municipio:
+        Number(formulario.id_municipio),
+
       codigo,
       nombre,
-      tipo_sucursal: formulario.tipo_sucursal,
+
+      tipo_sucursal:
+        formulario.tipo_sucursal,
+
       direccion,
-      latitud: latitudTexto,
-      longitud: longitudTexto,
+
+      latitud:
+        latitudTexto,
+
+      longitud:
+        longitudTexto,
+
       telefono,
     }
 
     await onGuardar(datos)
   }
 
-  const municipiosActivos = municipios.filter(
-    (municipio) => municipio.estado === 'ACTIVO',
-  )
+  const municipiosActivos =
+    municipios.filter(
+      (municipio) =>
+        municipio.estado === 'ACTIVO',
+    )
 
   const municipioSeleccionado =
     municipiosActivos.find(
@@ -282,12 +553,22 @@ function SucursalForm({
   return (
     <Dialog
       open={abierto}
-      onClose={guardando ? undefined : onCerrar}
+      onClose={
+        guardando
+          ? undefined
+          : onCerrar
+      }
       fullWidth
       maxWidth="md"
     >
-      <DialogTitle sx={{ fontWeight: 700 }}>
-        {editando ? 'Editar sucursal' : 'Nueva sucursal'}
+      <DialogTitle
+        sx={{
+          fontWeight: 700,
+        }}
+      >
+        {editando
+          ? 'Editar sucursal'
+          : 'Nueva sucursal'}
       </DialogTitle>
 
       <DialogContent dividers>
@@ -301,24 +582,37 @@ function SucursalForm({
           <Stack
             direction="row"
             spacing={1.5}
-            sx={{ alignItems: 'center' }}
+            sx={{
+              alignItems: 'center',
+            }}
           >
             <StoreRoundedIcon color="primary" />
 
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               Información general
             </Typography>
           </Stack>
 
           <Stack
-            direction={{ xs: 'column', md: 'row' }}
+            direction={{
+              xs: 'column',
+              md: 'row',
+            }}
             spacing={2}
           >
             <TextField
               label="Código"
               value={formulario.codigo}
               onChange={(event) =>
-                cambiarCampo('codigo', event.target.value)
+                cambiarCampo(
+                  'codigo',
+                  event.target.value,
+                )
               }
               placeholder="Ej. SUC-001"
               required
@@ -334,7 +628,10 @@ function SucursalForm({
               label="Nombre"
               value={formulario.nombre}
               onChange={(event) =>
-                cambiarCampo('nombre', event.target.value)
+                cambiarCampo(
+                  'nombre',
+                  event.target.value,
+                )
               }
               placeholder="Ej. Farmacia Central"
               required
@@ -347,7 +644,10 @@ function SucursalForm({
             />
           </Stack>
 
-          <FormControl fullWidth required>
+          <FormControl
+            fullWidth
+            required
+          >
             <InputLabel id="tipo-sucursal-label">
               Tipo de sucursal
             </InputLabel>
@@ -355,7 +655,9 @@ function SucursalForm({
             <Select
               labelId="tipo-sucursal-label"
               label="Tipo de sucursal"
-              value={formulario.tipo_sucursal}
+              value={
+                formulario.tipo_sucursal
+              }
               onChange={(event) =>
                 cambiarCampo(
                   'tipo_sucursal',
@@ -406,11 +708,18 @@ function SucursalForm({
           <Stack
             direction="row"
             spacing={1.5}
-            sx={{ alignItems: 'center' }}
+            sx={{
+              alignItems: 'center',
+            }}
           >
             <LocationOnRoundedIcon color="primary" />
 
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               Ubicación
             </Typography>
           </Stack>
@@ -422,13 +731,21 @@ function SucursalForm({
             getOptionLabel={(municipio) =>
               `${municipio.nombre} - ${municipio.departamento.nombre}`
             }
-            isOptionEqualToValue={(option, value) =>
-              option.id_municipio === value.id_municipio
+            isOptionEqualToValue={(
+              option,
+              value,
+            ) =>
+              option.id_municipio ===
+              value.id_municipio
             }
-            filterOptions={(options, state) => {
-              const busqueda = normalizarTexto(
-                state.inputValue,
-              )
+            filterOptions={(
+              options,
+              state,
+            ) => {
+              const busqueda =
+                normalizarTexto(
+                  state.inputValue,
+                )
 
               if (!busqueda) {
                 return []
@@ -445,7 +762,8 @@ function SucursalForm({
             onChange={(_, municipio) => {
               cambiarCampo(
                 'id_municipio',
-                municipio?.id_municipio.toString() ?? '',
+                municipio?.id_municipio.toString() ??
+                  '',
               )
             }}
             noOptionsText="Escribe el nombre de un municipio"
@@ -481,25 +799,30 @@ function SucursalForm({
             }}
           />
 
+          <SelectorMapa
+            latitud={formulario.latitud}
+            longitud={formulario.longitud}
+            abierto={abierto}
+            onSeleccionar={
+              seleccionarUbicacion
+            }
+          />
+
           <Stack
-            direction={{ xs: 'column', md: 'row' }}
+            direction={{
+              xs: 'column',
+              md: 'row',
+            }}
             spacing={2}
           >
             <TextField
               label="Latitud"
               value={formulario.latitud}
-              onChange={(event) =>
-                cambiarCampo(
-                  'latitud',
-                  event.target.value,
-                )
-              }
-              placeholder="Ej. 14.634915"
               required
               fullWidth
               slotProps={{
-                htmlInput: {
-                  inputMode: 'decimal',
+                input: {
+                  readOnly: true,
                 },
               }}
             />
@@ -507,26 +830,20 @@ function SucursalForm({
             <TextField
               label="Longitud"
               value={formulario.longitud}
-              onChange={(event) =>
-                cambiarCampo(
-                  'longitud',
-                  event.target.value,
-                )
-              }
-              placeholder="Ej. -90.506882"
               required
               fullWidth
               slotProps={{
-                htmlInput: {
-                  inputMode: 'decimal',
+                input: {
+                  readOnly: true,
                 },
               }}
             />
           </Stack>
 
           <Alert severity="info">
-            La latitud y longitud deben corresponder a la
-            ubicación geográfica de la sucursal.
+            Selecciona en el mapa el punto exacto donde se
+            encuentra la sucursal. La latitud y longitud se
+            registrarán automáticamente.
           </Alert>
 
           <Divider />
@@ -534,11 +851,18 @@ function SucursalForm({
           <Stack
             direction="row"
             spacing={1.5}
-            sx={{ alignItems: 'center' }}
+            sx={{
+              alignItems: 'center',
+            }}
           >
             <BusinessRoundedIcon color="primary" />
 
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               Contacto
             </Typography>
           </Stack>
@@ -567,6 +891,7 @@ function SucursalForm({
                   />
                 ),
               },
+
               htmlInput: {
                 maxLength: 20,
               },
@@ -575,7 +900,12 @@ function SucursalForm({
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2,
+        }}
+      >
         <Button
           onClick={onCerrar}
           disabled={guardando}
@@ -593,7 +923,9 @@ function SucursalForm({
               <CircularProgress
                 size={20}
                 color="inherit"
-                sx={{ mr: 1 }}
+                sx={{
+                  mr: 1,
+                }}
               />
 
               Guardando...

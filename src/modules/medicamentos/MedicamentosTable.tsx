@@ -22,11 +22,13 @@ import type { Medicamento } from './medicamentosService'
 interface MedicamentosTableProps {
   medicamentos: Medicamento[]
   onEditar: (medicamento: Medicamento) => void
+  puedeEditar: boolean
 }
 
 function MedicamentosTable({
   medicamentos,
   onEditar,
+  puedeEditar,
 }: MedicamentosTableProps) {
   const formatearPrecio = (precio: number) => {
     return new Intl.NumberFormat('es-GT', {
@@ -48,15 +50,34 @@ function MedicamentosTable({
         <TableHead>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
             <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Medicamento</TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Medicamento
+            </TableCell>
+
             <TableCell sx={{ fontWeight: 700 }}>
               Principio activo
             </TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Presentación</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Laboratorio</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Precio</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Presentación
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Laboratorio
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Precio
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Venta
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Estado
+            </TableCell>
 
             <TableCell align="center" sx={{ fontWeight: 700 }}>
               Acciones
@@ -115,11 +136,17 @@ function MedicamentosTable({
                 </Stack>
               </TableCell>
 
-              <TableCell>{medicamento.principio_activo}</TableCell>
+              <TableCell>
+                {medicamento.principio_activo}
+              </TableCell>
 
-              <TableCell>{medicamento.presentacion}</TableCell>
+              <TableCell>
+                {medicamento.presentacion}
+              </TableCell>
 
-              <TableCell>{medicamento.laboratorio}</TableCell>
+              <TableCell>
+                {medicamento.laboratorio}
+              </TableCell>
 
               <TableCell sx={{ fontWeight: 700 }}>
                 {formatearPrecio(medicamento.precio_venta)}
@@ -132,7 +159,11 @@ function MedicamentosTable({
                       ? 'Requiere receta'
                       : 'Venta libre'
                   }
-                  color={medicamento.requiere_receta ? 'warning' : 'info'}
+                  color={
+                    medicamento.requiere_receta
+                      ? 'warning'
+                      : 'info'
+                  }
                   size="small"
                   variant="outlined"
                   sx={{ fontWeight: 600 }}
@@ -153,15 +184,17 @@ function MedicamentosTable({
               </TableCell>
 
               <TableCell align="center">
-                <Tooltip title="Editar medicamento">
-                  <IconButton
-                    color="primary"
-                    size="small"
-                    onClick={() => onEditar(medicamento)}
-                  >
-                    <EditRoundedIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                {puedeEditar && (
+                  <Tooltip title="Editar medicamento">
+                    <IconButton
+                      color="primary"
+                      size="small"
+                      onClick={() => onEditar(medicamento)}
+                    >
+                      <EditRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </TableCell>
             </TableRow>
           ))}

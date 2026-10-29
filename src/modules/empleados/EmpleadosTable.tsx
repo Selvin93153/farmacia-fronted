@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import {
   Box,
   Chip,
@@ -14,9 +16,10 @@ import {
   Typography,
 } from '@mui/material'
 
-
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded'
+
+import { obtenerSesion } from '../auth/authService'
 
 import type { Empleado } from './empleadosService'
 
@@ -29,6 +32,25 @@ function EmpleadosTable({
   empleados,
   onEditar,
 }: EmpleadosTableProps) {
+  const [puedeEditar, setPuedeEditar] = useState(false)
+
+  // Verifica si el usuario autenticado pertenece al rol de RRHH.
+  useEffect(() => {
+    const verificarPermisoEdicion = async () => {
+      try {
+        const sesion = await obtenerSesion()
+
+        setPuedeEditar(
+          sesion.rol?.codigo === 'RRHH',
+        )
+      } catch {
+        setPuedeEditar(false)
+      }
+    }
+
+    void verificarPermisoEdicion()
+  }, [])
+
   const formatearSalario = (salario: number) => {
     return new Intl.NumberFormat('es-GT', {
       style: 'currency',
@@ -45,20 +67,48 @@ function EmpleadosTable({
         overflow: 'hidden',
       }}
     >
-      <Table aria-label="Listado de empleados" sx={{ minWidth: 1050 }}>
+      <Table
+        aria-label="Listado de empleados"
+        sx={{ minWidth: 1050 }}
+      >
         <TableHead>
           <TableRow sx={{ bgcolor: 'action.hover' }}>
-            <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Empleado</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Puesto</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Sucursal</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Teléfono</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Salario</TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-
-            <TableCell align="center" sx={{ fontWeight: 700 }}>
-              Acciones
+            <TableCell sx={{ fontWeight: 700 }}>
+              Código
             </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Empleado
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Puesto
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Sucursal
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Teléfono
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Salario
+            </TableCell>
+
+            <TableCell sx={{ fontWeight: 700 }}>
+              Estado
+            </TableCell>
+
+            {puedeEditar && (
+              <TableCell
+                align="center"
+                sx={{ fontWeight: 700 }}
+              >
+                Acciones
+              </TableCell>
+            )}
           </TableRow>
         </TableHead>
 
@@ -102,17 +152,23 @@ function EmpleadosTable({
 
                   <Box>
                     <Typography sx={{ fontWeight: 600 }}>
-                      {empleado.nombres} {empleado.apellidos}
+                      {empleado.nombres}{' '}
+                      {empleado.apellidos}
                     </Typography>
 
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
                       ID #{empleado.id_empleado}
                     </Typography>
                   </Box>
                 </Stack>
               </TableCell>
 
-              <TableCell>{empleado.puesto}</TableCell>
+              <TableCell>
+                {empleado.puesto}
+              </TableCell>
 
               <TableCell>
                 <Typography sx={{ fontWeight: 600 }}>
@@ -121,46 +177,61 @@ function EmpleadosTable({
                 </Typography>
 
                 {empleado.sucursal?.codigo && (
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
                     {empleado.sucursal.codigo}
                   </Typography>
                 )}
               </TableCell>
 
-              <TableCell>{empleado.telefono}</TableCell>
+              <TableCell>
+                {empleado.telefono}
+              </TableCell>
 
               <TableCell sx={{ fontWeight: 600 }}>
-                {formatearSalario(empleado.salario_base)}
+                {formatearSalario(
+                  empleado.salario_base,
+                )}
               </TableCell>
 
               <TableCell>
                 <Chip
                   label={empleado.estado}
-                  color={empleado.estado === 'ACTIVO' ? 'success' : 'default'}
+                  color={
+                    empleado.estado === 'ACTIVO'
+                      ? 'success'
+                      : 'default'
+                  }
                   size="small"
                   sx={{ fontWeight: 700 }}
                 />
               </TableCell>
 
-              <TableCell align="center">
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Tooltip title="Editar empleado">
-                    <IconButton
-                      color="primary"
-                      size="small"
-                      onClick={() => onEditar(empleado)}
-                    >
-                      <EditRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              </TableCell>
+              {puedeEditar && (
+                <TableCell align="center">
+                  <Stack
+                    direction="row"
+                    spacing={0.5}
+                    sx={{
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Tooltip title="Editar empleado">
+                      <IconButton
+                        color="primary"
+                        size="small"
+                        onClick={() =>
+                          onEditar(empleado)
+                        }
+                      >
+                        <EditRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

@@ -107,7 +107,7 @@ export default function TrasladoDetalleDialog({
                 Solicitado por
               </Typography>
               <Typography sx={{ fontWeight: 700 }}>
-                {textoUsuario(traslado.usuario_solicita)}
+                {traslado.sucursal_destino.nombre}
               </Typography>
               <Typography
                 variant="body2"

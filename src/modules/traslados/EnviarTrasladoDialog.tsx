@@ -109,8 +109,8 @@ export default function EnviarTrasladoDialog({
           {error && <Alert severity="error">{error}</Alert>}
 
           <Alert severity="info" variant="outlined">
-            Al confirmar, el backend descontará automáticamente
-            del inventario de la sucursal origen las cantidades
+            Al confirmar, se descontará automáticamente
+            de su inventario las cantidades de medicamentos
             indicadas.
           </Alert>
 

@@ -22,13 +22,21 @@ import {
 
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded'
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded'
+import PaymentsRoundedIcon from '@mui/icons-material/PaymentsRounded'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 
 import { obtenerSesion } from '../auth/authService'
-import { obtenerFormasPago, type FormaPago } from '../formas-pago/formasPagoService'
+import {
+  obtenerFormasPago,
+  type FormaPago,
+} from '../formas-pago/formasPagoService'
 import VentasTable from './VentasTable'
-import { obtenerVentas, obtenerVentasMiSucursal, type Venta } from './ventasService'
+import {
+  obtenerVentas,
+  obtenerVentasMiSucursal,
+  type Venta,
+} from './ventasService'
 
 type FiltroEstado = 'TODOS' | 'BORRADOR' | 'COMPLETADA'
 
@@ -48,18 +56,32 @@ const MESES = [
 ]
 
 // Convierte los errores de consultas en mensajes visibles al usuario.
-function obtenerMensajeError(error: unknown, mensajePredeterminado: string): string {
+function obtenerMensajeError(
+  error: unknown,
+  mensajePredeterminado: string,
+): string {
   if (axios.isAxiosError(error)) {
     const mensajeBackend = error.response?.data?.message
 
-    if (Array.isArray(mensajeBackend)) return mensajeBackend.join(', ')
-    if (typeof mensajeBackend === 'string') return mensajeBackend
-    if (error.response) return `El backend respondió con error HTTP ${error.response.status}.`
+    if (Array.isArray(mensajeBackend)) {
+      return mensajeBackend.join(', ')
+    }
+
+    if (typeof mensajeBackend === 'string') {
+      return mensajeBackend
+    }
+
+    if (error.response) {
+      return `El backend respondió con error HTTP ${error.response.status}.`
+    }
 
     return 'No se pudo establecer comunicación con el servidor.'
   }
 
-  if (error instanceof Error) return error.message
+  if (error instanceof Error) {
+    return error.message
+  }
+
   return mensajePredeterminado
 }
 
@@ -72,8 +94,10 @@ function ControlVentasRealizadas() {
   const [error, setError] = useState('')
 
   const [busqueda, setBusqueda] = useState('')
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('TODOS')
-  const [filtroFormaPago, setFiltroFormaPago] = useState('TODAS')
+  const [filtroEstado, setFiltroEstado] =
+    useState<FiltroEstado>('TODOS')
+  const [filtroFormaPago, setFiltroFormaPago] =
+    useState('TODAS')
   const [filtroMes, setFiltroMes] = useState('TODOS')
   const [filtroAnio, setFiltroAnio] = useState('TODOS')
 
@@ -84,15 +108,24 @@ function ControlVentasRealizadas() {
 
     try {
       const sesion = await obtenerSesion()
-      const [ventasRecibidas, formasPagoRecibidas] = await Promise.all([
-        sesion.id_sucursal === null ? obtenerVentas() : obtenerVentasMiSucursal(),
-        obtenerFormasPago(),
-      ])
+
+      const [ventasRecibidas, formasPagoRecibidas] =
+        await Promise.all([
+          sesion.id_sucursal === null
+            ? obtenerVentas()
+            : obtenerVentasMiSucursal(),
+          obtenerFormasPago(),
+        ])
 
       setVentas(ventasRecibidas)
       setFormasPago(formasPagoRecibidas)
     } catch (error: unknown) {
-      setError(obtenerMensajeError(error, 'Ocurrió un error al cargar el historial de ventas.'))
+      setError(
+        obtenerMensajeError(
+          error,
+          'Ocurrió un error al cargar el historial de ventas.',
+        ),
+      )
     } finally {
       setCargando(false)
     }
@@ -118,12 +151,26 @@ function ControlVentasRealizadas() {
 
     return ventas.filter((venta) => {
       const fecha = new Date(venta.fecha)
-      const coincideEstado = filtroEstado === 'TODOS' || venta.estado === filtroEstado
+
+      const coincideEstado =
+        filtroEstado === 'TODOS' ||
+        venta.estado === filtroEstado
+
       const coincidePago =
-        filtroFormaPago === 'TODAS' || venta.id_forma_pago === Number(filtroFormaPago)
-      const coincideMes = filtroMes === 'TODOS' || fecha.getMonth() + 1 === Number(filtroMes)
-      const coincideAnio = filtroAnio === 'TODOS' || fecha.getFullYear() === Number(filtroAnio)
-      const nombreCajero = `${venta.usuario.nombre} ${venta.usuario.apellido}`.toLowerCase()
+        filtroFormaPago === 'TODAS' ||
+        venta.id_forma_pago === Number(filtroFormaPago)
+
+      const coincideMes =
+        filtroMes === 'TODOS' ||
+        fecha.getMonth() + 1 === Number(filtroMes)
+
+      const coincideAnio =
+        filtroAnio === 'TODOS' ||
+        fecha.getFullYear() === Number(filtroAnio)
+
+      const nombreCajero =
+        `${venta.usuario.nombre} ${venta.usuario.apellido}`.toLowerCase()
+
       const coincideBusqueda =
         texto === '' ||
         venta.id_venta.toString().includes(texto) ||
@@ -133,9 +180,41 @@ function ControlVentasRealizadas() {
         nombreCajero.includes(texto) ||
         venta.forma_pago.nombre.toLowerCase().includes(texto)
 
-      return coincideEstado && coincidePago && coincideMes && coincideAnio && coincideBusqueda
+      return (
+        coincideEstado &&
+        coincidePago &&
+        coincideMes &&
+        coincideAnio &&
+        coincideBusqueda
+      )
     })
-  }, [ventas, busqueda, filtroEstado, filtroFormaPago, filtroMes, filtroAnio])
+  }, [
+    ventas,
+    busqueda,
+    filtroEstado,
+    filtroFormaPago,
+    filtroMes,
+    filtroAnio,
+  ])
+
+  // Suma únicamente las ventas completadas que cumplen los filtros actuales.
+  const totalVendido = useMemo(() => {
+    return ventasFiltradas
+      .filter((venta) => venta.estado === 'COMPLETADA')
+      .reduce(
+        (acumulado, venta) =>
+          acumulado + Number(venta.total),
+        0,
+      )
+  }, [ventasFiltradas])
+
+  const formatearMoneda = (valor: number) => {
+    return new Intl.NumberFormat('es-GT', {
+      style: 'currency',
+      currency: 'GTQ',
+      minimumFractionDigits: 2,
+    }).format(valor)
+  }
 
   const hayFiltros =
     busqueda.trim() !== '' ||
@@ -157,25 +236,58 @@ function ControlVentasRealizadas() {
       <Stack
         direction={{ xs: 'column', md: 'row' }}
         spacing={2}
-        sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' } }}
+        sx={{
+          justifyContent: 'space-between',
+          alignItems: {
+            xs: 'flex-start',
+            md: 'center',
+          },
+        }}
       >
         <Box>
           <Button
             size="small"
             startIcon={<ArrowBackRoundedIcon />}
             onClick={() => navigate('/app/ventas')}
-            sx={{ mb: 1, textTransform: 'none' }}
+            sx={{
+              mb: 1,
+              textTransform: 'none',
+            }}
           >
             Volver a Ventas
           </Button>
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <HistoryRoundedIcon color="primary" fontSize="large" />
-            <Typography component="h1" variant="h4" sx={{ fontWeight: 800 }}>
+
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: 'center',
+            }}
+          >
+            <HistoryRoundedIcon
+              color="primary"
+              fontSize="large"
+            />
+
+            <Typography
+              component="h1"
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+              }}
+            >
               Ventas realizadas
             </Typography>
           </Stack>
-          <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-            Consulta el historial, incluyendo ventas completadas y borradores pendientes.
+
+          <Typography
+            color="text.secondary"
+            sx={{
+              mt: 0.5,
+            }}
+          >
+            Consulta el historial, incluyendo ventas completadas y borradores
+            pendientes.
           </Typography>
         </Box>
 
@@ -184,26 +296,48 @@ function ControlVentasRealizadas() {
           startIcon={<RefreshRoundedIcon />}
           onClick={() => void cargarDatos()}
           disabled={cargando}
-          sx={{ textTransform: 'none', fontWeight: 600 }}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 600,
+          }}
         >
           Actualizar
         </Button>
       </Stack>
 
-      {cargando && <LinearProgress aria-label="Cargando historial de ventas" />}
-      {error && <Alert severity="error">{error}</Alert>}
+      {cargando && (
+        <LinearProgress aria-label="Cargando historial de ventas" />
+      )}
 
-      <Card variant="outlined" sx={{ borderRadius: 3 }}>
+      {error && (
+        <Alert severity="error">
+          {error}
+        </Alert>
+      )}
+
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 3,
+        }}
+      >
         <CardContent>
           <Stack spacing={2}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 700,
+              }}
+            >
               Buscar y filtrar ventas
             </Typography>
 
             <TextField
               placeholder="Buscar por número de venta, sucursal, caja, cajero o forma de pago..."
               value={busqueda}
-              onChange={(event) => setBusqueda(event.target.value)}
+              onChange={(event) =>
+                setBusqueda(event.target.value)
+              }
               fullWidth
               slotProps={{
                 input: {
@@ -228,28 +362,53 @@ function ControlVentasRealizadas() {
               }}
             >
               <FormControl fullWidth>
-                <InputLabel id="historial-estado-label">Estado</InputLabel>
+                <InputLabel id="historial-estado-label">
+                  Estado
+                </InputLabel>
+
                 <Select
                   labelId="historial-estado-label"
                   label="Estado"
                   value={filtroEstado}
-                  onChange={(event) => setFiltroEstado(event.target.value as FiltroEstado)}
+                  onChange={(event) =>
+                    setFiltroEstado(
+                      event.target.value as FiltroEstado,
+                    )
+                  }
                 >
-                  <MenuItem value="TODOS">Todos</MenuItem>
-                  <MenuItem value="BORRADOR">Borrador</MenuItem>
-                  <MenuItem value="COMPLETADA">Completada</MenuItem>
+                  <MenuItem value="TODOS">
+                    Todos
+                  </MenuItem>
+
+                  <MenuItem value="BORRADOR">
+                    Borrador
+                  </MenuItem>
+
+                  <MenuItem value="COMPLETADA">
+                    Completada
+                  </MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel id="historial-pago-label">Forma de pago</InputLabel>
+                <InputLabel id="historial-pago-label">
+                  Forma de pago
+                </InputLabel>
+
                 <Select
                   labelId="historial-pago-label"
                   label="Forma de pago"
                   value={filtroFormaPago}
-                  onChange={(event) => setFiltroFormaPago(event.target.value)}
+                  onChange={(event) =>
+                    setFiltroFormaPago(
+                      event.target.value,
+                    )
+                  }
                 >
-                  <MenuItem value="TODAS">Todas</MenuItem>
+                  <MenuItem value="TODAS">
+                    Todas
+                  </MenuItem>
+
                   {formasPago.map((formaPago) => (
                     <MenuItem
                       key={formaPago.id_forma_pago}
@@ -262,16 +421,27 @@ function ControlVentasRealizadas() {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel id="historial-mes-label">Mes</InputLabel>
+                <InputLabel id="historial-mes-label">
+                  Mes
+                </InputLabel>
+
                 <Select
                   labelId="historial-mes-label"
                   label="Mes"
                   value={filtroMes}
-                  onChange={(event) => setFiltroMes(event.target.value)}
+                  onChange={(event) =>
+                    setFiltroMes(event.target.value)
+                  }
                 >
-                  <MenuItem value="TODOS">Todos los meses</MenuItem>
+                  <MenuItem value="TODOS">
+                    Todos los meses
+                  </MenuItem>
+
                   {MESES.map((mes, indice) => (
-                    <MenuItem key={mes} value={String(indice + 1)}>
+                    <MenuItem
+                      key={mes}
+                      value={String(indice + 1)}
+                    >
                       {mes}
                     </MenuItem>
                   ))}
@@ -279,16 +449,27 @@ function ControlVentasRealizadas() {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel id="historial-anio-label">Año</InputLabel>
+                <InputLabel id="historial-anio-label">
+                  Año
+                </InputLabel>
+
                 <Select
                   labelId="historial-anio-label"
                   label="Año"
                   value={filtroAnio}
-                  onChange={(event) => setFiltroAnio(event.target.value)}
+                  onChange={(event) =>
+                    setFiltroAnio(event.target.value)
+                  }
                 >
-                  <MenuItem value="TODOS">Todos los años</MenuItem>
+                  <MenuItem value="TODOS">
+                    Todos los años
+                  </MenuItem>
+
                   {aniosDisponibles.map((anio) => (
-                    <MenuItem key={anio} value={String(anio)}>
+                    <MenuItem
+                      key={anio}
+                      value={String(anio)}
+                    >
                       {anio}
                     </MenuItem>
                   ))}
@@ -298,43 +479,85 @@ function ControlVentasRealizadas() {
 
             {hayFiltros && (
               <Stack
-                direction={{ xs: 'column', sm: 'row' }}
+                direction={{
+                  xs: 'column',
+                  sm: 'row',
+                }}
                 spacing={1}
-                sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between' }}
+                sx={{
+                  alignItems: {
+                    sm: 'center',
+                  },
+                  justifyContent: 'space-between',
+                }}
               >
-                <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    flexWrap: 'wrap',
+                    rowGap: 1,
+                  }}
+                >
                   {filtroMes !== 'TODOS' && (
                     <Chip
-                      label={`Mes: ${MESES[Number(filtroMes) - 1]}`}
+                      label={`Mes: ${
+                        MESES[
+                          Number(filtroMes) - 1
+                        ]
+                      }`}
                       size="small"
-                      onDelete={() => setFiltroMes('TODOS')}
+                      onDelete={() =>
+                        setFiltroMes('TODOS')
+                      }
                     />
                   )}
+
                   {filtroAnio !== 'TODOS' && (
                     <Chip
                       label={`Año: ${filtroAnio}`}
                       size="small"
-                      onDelete={() => setFiltroAnio('TODOS')}
+                      onDelete={() =>
+                        setFiltroAnio('TODOS')
+                      }
                     />
                   )}
+
                   {filtroEstado !== 'TODOS' && (
                     <Chip
                       label={`Estado: ${filtroEstado}`}
                       size="small"
-                      onDelete={() => setFiltroEstado('TODOS')}
+                      onDelete={() =>
+                        setFiltroEstado('TODOS')
+                      }
                     />
                   )}
+
                   {filtroFormaPago !== 'TODAS' && (
                     <Chip
-                      label={`Pago: ${formasPago.find((formaPago) =>
-                        formaPago.id_forma_pago === Number(filtroFormaPago),
-                      )?.nombre ?? ''}`}
+                      label={`Pago: ${
+                        formasPago.find(
+                          (formaPago) =>
+                            formaPago.id_forma_pago ===
+                            Number(
+                              filtroFormaPago,
+                            ),
+                        )?.nombre ?? ''
+                      }`}
                       size="small"
-                      onDelete={() => setFiltroFormaPago('TODAS')}
+                      onDelete={() =>
+                        setFiltroFormaPago('TODAS')
+                      }
                     />
                   )}
                 </Stack>
-                <Button onClick={limpiarFiltros} sx={{ textTransform: 'none' }}>
+
+                <Button
+                  onClick={limpiarFiltros}
+                  sx={{
+                    textTransform: 'none',
+                  }}
+                >
                   Limpiar filtros
                 </Button>
               </Stack>
@@ -344,15 +567,92 @@ function ControlVentasRealizadas() {
       </Card>
 
       {!cargando && !error && (
+        <Card
+          variant="outlined"
+          sx={{
+            borderRadius: 3,
+            maxWidth: {
+              xs: '100%',
+              sm: 430,
+            },
+            transition: '0.2s',
+
+            '&:hover': {
+              boxShadow: 3,
+              transform: 'translateY(-2px)',
+            },
+          }}
+        >
+          <CardContent>
+            <Stack
+              direction="row"
+              spacing={2}
+              sx={{
+                alignItems: 'center',
+              }}
+            >
+              <Box
+                sx={{
+                  width: 58,
+                  height: 58,
+                  borderRadius: 2.5,
+                  bgcolor: 'success.main',
+                  color: 'common.white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <PaymentsRoundedIcon fontSize="large" />
+              </Box>
+
+              <Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  Total vendido
+                </Typography>
+
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 800,
+                  }}
+                >
+                  {formatearMoneda(totalVendido)}
+                </Typography>
+
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                >
+                  Ventas completadas según los filtros aplicados
+                </Typography>
+              </Box>
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {!cargando && !error && (
         <>
-          <Typography color="text.secondary" variant="body2">
+          <Typography
+            color="text.secondary"
+            variant="body2"
+          >
             Mostrando {ventasFiltradas.length} de {ventas.length} ventas.
           </Typography>
 
           {ventasFiltradas.length > 0 ? (
             <VentasTable
               ventas={ventasFiltradas}
-              onAbrirVenta={(venta) => navigate(`/app/ventas/${venta.id_venta}/detalle`)}
+              onAbrirVenta={(venta) =>
+                navigate(
+                  `/app/ventas/${venta.id_venta}/detalle`,
+                )
+              }
             />
           ) : (
             <Alert severity="info">

@@ -27,6 +27,8 @@ import MedicalServicesRoundedIcon from '@mui/icons-material/MedicalServicesRound
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 
+import { obtenerSesion } from '../auth/authService'
+
 import MedicamentoForm from './MedicamentoForm'
 import MedicamentosTable from './MedicamentosTable'
 
@@ -52,6 +54,8 @@ function ControlMedicamento() {
   const [filtroReceta, setFiltroReceta] = useState('TODOS')
 
   const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [puedeGestionarMedicamentos, setPuedeGestionarMedicamentos] =
+    useState(false)
 
   const [medicamentoEditando, setMedicamentoEditando] =
     useState<Medicamento | null>(null)
@@ -85,14 +89,26 @@ function ControlMedicamento() {
     return mensajePredeterminado
   }
 
+  // Carga los medicamentos y verifica si el usuario puede administrarlos.
   const cargarMedicamentos = async () => {
     setCargando(true)
     setError('')
 
     try {
-      const datos = await obtenerMedicamentos()
+      const [datos, sesion] = await Promise.all([
+        obtenerMedicamentos(),
+        obtenerSesion(),
+      ])
+
       setMedicamentos(datos)
+
+      setPuedeGestionarMedicamentos(
+        sesion.rol?.codigo === 'INVENTARIO',
+      )
     } catch (error: unknown) {
+      setMedicamentos([])
+      setPuedeGestionarMedicamentos(false)
+
       setError(
         obtenerMensajeError(
           error,
@@ -105,7 +121,7 @@ function ControlMedicamento() {
   }
 
   useEffect(() => {
-    cargarMedicamentos()
+    void cargarMedicamentos()
   }, [])
 
   const medicamentosFiltrados = useMemo(() => {
@@ -143,13 +159,23 @@ function ControlMedicamento() {
     (medicamento) => medicamento.requiere_receta,
   ).length
 
+  // Solo INVENTARIO puede abrir el formulario para crear medicamentos.
   const abrirNuevoMedicamento = () => {
+    if (!puedeGestionarMedicamentos) {
+      return
+    }
+
     setMedicamentoEditando(null)
     setErrorFormulario('')
     setFormularioAbierto(true)
   }
 
+  // Solo INVENTARIO puede abrir el formulario para editar medicamentos.
   const abrirEditarMedicamento = (medicamento: Medicamento) => {
+    if (!puedeGestionarMedicamentos) {
+      return
+    }
+
     setMedicamentoEditando(medicamento)
     setErrorFormulario('')
     setFormularioAbierto(true)
@@ -165,9 +191,17 @@ function ControlMedicamento() {
     setErrorFormulario('')
   }
 
+  // Crea o actualiza medicamentos únicamente cuando el usuario tiene permiso.
   const guardarMedicamento = async (
     datos: CrearMedicamento | ActualizarMedicamento,
   ) => {
+    if (!puedeGestionarMedicamentos) {
+      setErrorFormulario(
+        'No tienes permisos para crear o editar medicamentos.',
+      )
+      return
+    }
+
     setGuardando(true)
     setErrorFormulario('')
 
@@ -233,14 +267,16 @@ function ControlMedicamento() {
             Actualizar
           </Button>
 
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={abrirNuevoMedicamento}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            Nuevo medicamento
-          </Button>
+          {puedeGestionarMedicamentos && (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={abrirNuevoMedicamento}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Nuevo medicamento
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -389,6 +425,7 @@ function ControlMedicamento() {
           <MedicamentosTable
             medicamentos={medicamentosFiltrados}
             onEditar={abrirEditarMedicamento}
+            puedeEditar={puedeGestionarMedicamentos}
           />
         </>
       )}
