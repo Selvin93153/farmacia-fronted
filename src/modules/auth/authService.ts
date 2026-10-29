@@ -14,18 +14,6 @@ export interface LoginResponse {
   usuario: UsuarioAutenticado
 }
 
-export async function iniciarSesion(
-  correo: string,
-  password: string,
-): Promise<LoginResponse> {
-  const respuesta = await api.post<LoginResponse>('/auth/login', {
-    correo,
-    password,
-  })
-
-  return respuesta.data
-}
-
 export interface UsuarioSesion {
   id_usuario: number
   id_rol: number
@@ -36,7 +24,7 @@ export interface UsuarioSesion {
   telefono: string
   estado: string
 
-   rol?: {
+  rol?: {
     codigo: string
     nombre: string
     descripcion?: string
@@ -49,8 +37,47 @@ export interface UsuarioSesion {
   } | null
 }
 
+export interface CambiarPassword {
+  password_actual: string
+  password_nueva: string
+  confirmar_password: string
+}
+
+export interface CambiarPasswordResponse {
+  message: string
+}
+
+export async function iniciarSesion(
+  correo: string,
+  password: string,
+): Promise<LoginResponse> {
+  const respuesta = await api.post<LoginResponse>(
+    '/auth/login',
+    {
+      correo,
+      password,
+    },
+  )
+
+  return respuesta.data
+}
+
 export async function obtenerSesion(): Promise<UsuarioSesion> {
-  const respuesta = await api.get<UsuarioSesion>('/auth/me')
+  const respuesta =
+    await api.get<UsuarioSesion>('/auth/me')
+
+  return respuesta.data
+}
+
+// Cambia la contraseña del usuario que tiene la sesión actual.
+export async function cambiarPassword(
+  datos: CambiarPassword,
+): Promise<CambiarPasswordResponse> {
+  const respuesta =
+    await api.patch<CambiarPasswordResponse>(
+      '/usuarios/cambiar-password',
+      datos,
+    )
 
   return respuesta.data
 }
