@@ -92,6 +92,7 @@ export const menuConfig: SeccionMenu[] = [
         roles: [
           'ADMIN_SUCURSAL',
           'INVENTARIO',
+          'ADMIN_SISTEMA'
         ],
       },
       {
@@ -104,7 +105,7 @@ export const menuConfig: SeccionMenu[] = [
         texto: 'Movimientos de Caja',
         ruta: '/app/movimientos-caja',
         icono: AccountBalanceWalletRoundedIcon,
-        roles: ['ADMIN_SUCURSAL'],
+        roles: ['ADMIN_SUCURSAL',  'ADMIN_SISTEMA'],
       },
     ],
   },
@@ -136,13 +137,14 @@ export const menuConfig: SeccionMenu[] = [
         roles: [
           'ADMIN_SUCURSAL',
           'INVENTARIO',
+          'ADMIN_SISTEMA',
         ],
       },
       {
         texto: 'Activos Fijos',
         ruta: '/app/activos-fijos',
         icono: BusinessCenterRoundedIcon,
-        roles: ['ADMIN_SUCURSAL'],
+        roles: ['ADMIN_SUCURSAL', 'ADMIN_SISTEMA',],
       },
     ],
   },

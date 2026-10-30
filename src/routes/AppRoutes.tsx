@@ -36,6 +36,8 @@ function AppRoutes() {
         <Route path="/app" element={<AppLayout />}>
           <Route index element={<Navigate to="inicio" replace />} />
 
+
+
           <Route
             path="inicio"
             element={
@@ -52,6 +54,9 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
+
 
           <Route
             path="perfil"
@@ -70,6 +75,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="farmacias"
             element={
@@ -82,6 +89,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="empleados"
@@ -97,6 +106,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="medicamentos"
             element={
@@ -110,6 +121,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="inventario"
@@ -125,6 +138,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="movimientos-inventario"
             element={
@@ -132,12 +147,15 @@ function AppRoutes() {
                 rolesPermitidos={[
                   'ADMIN_SUCURSAL',
                   'INVENTARIO',
+                  'ADMIN_SISTEMA',
                 ]}
               >
                 <ControlMovimientoInventario />
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="planillas"
@@ -152,6 +170,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="planillas/:id/detalle"
             element={
@@ -165,6 +185,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="cajas"
             element={
@@ -177,6 +199,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="ventas"
@@ -192,6 +216,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="ventas/realizadas"
             element={
@@ -205,6 +231,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="ventas/:id/detalle"
@@ -220,6 +248,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="usuarios"
             element={
@@ -234,12 +264,15 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="movimientos-caja"
             element={
               <RoleRoute
                 rolesPermitidos={[
                   'ADMIN_SUCURSAL',
+                   'ADMIN_SISTEMA'
                 ]}
               >
                 <ControlMovimientoCaja />
@@ -247,12 +280,14 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="activos-fijos"
             element={
               <RoleRoute
                 rolesPermitidos={[
-                  'ADMIN_SUCURSAL',
+                  'ADMIN_SUCURSAL',  'ADMIN_SISTEMA',
                   
                 ]}
               >
@@ -260,6 +295,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="auditoria-efectivo"
@@ -275,6 +312,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="entregas"
             element={
@@ -288,6 +327,8 @@ function AppRoutes() {
               </RoleRoute>
             }
           />
+
+
 
           <Route
             path="pedidos"
@@ -303,6 +344,8 @@ function AppRoutes() {
             }
           />
 
+
+
           <Route
             path="traslados"
             element={
@@ -310,6 +353,7 @@ function AppRoutes() {
                 rolesPermitidos={[
                   'ADMIN_SUCURSAL',
                   'INVENTARIO',
+                  'ADMIN_SISTEMA'
                 ]}
               >
                 <ControlTranslado />
@@ -318,6 +362,8 @@ function AppRoutes() {
           />
         </Route>
       </Route>
+
+
 
       <Route
         path="/"

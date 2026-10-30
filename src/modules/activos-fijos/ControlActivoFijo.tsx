@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import axios from 'axios'
+
 import {
   Alert,
   Box,
@@ -18,6 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
+
 import AddRoundedIcon from '@mui/icons-material/AddRounded'
 import BuildRoundedIcon from '@mui/icons-material/BuildRounded'
 import BusinessCenterRoundedIcon from '@mui/icons-material/BusinessCenterRounded'
@@ -27,12 +29,15 @@ import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded'
 
 import { obtenerSesion } from '../auth/authService'
+
 import {
   obtenerSucursales,
   type Sucursal,
 } from '../sucursales/sucursalesService'
+
 import ActivoFijoForm from './ActivoFijoForm'
 import ActivosFijosTable from './ActivosFijosTable'
+
 import {
   actualizarActivoFijo,
   crearActivoFijo,
@@ -52,6 +57,7 @@ const formatoMoneda = new Intl.NumberFormat('es-GT', {
   minimumFractionDigits: 2,
 })
 
+// Convierte los errores del backend en mensajes comprensibles.
 function obtenerMensajeError(error: unknown, predeterminado: string): string {
   if (axios.isAxiosError(error)) {
     const mensajeBackend = error.response?.data?.message
@@ -81,13 +87,17 @@ function obtenerMensajeError(error: unknown, predeterminado: string): string {
 function ControlActivoFijo() {
   const [activos, setActivos] = useState<ActivoFijo[]>([])
   const [sucursales, setSucursales] = useState<Sucursal[]>([])
+
   const [idSucursalAsignada, setIdSucursalAsignada] = useState<number | null>(
     null,
   )
+
   const [sesionVerificada, setSesionVerificada] = useState(false)
+  const [esAdminSistema, setEsAdminSistema] = useState(false)
 
   const [cargando, setCargando] = useState(true)
   const [guardando, setGuardando] = useState(false)
+
   const [error, setError] = useState('')
   const [errorFormulario, setErrorFormulario] = useState('')
 
@@ -99,17 +109,20 @@ function ControlActivoFijo() {
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [activoEditando, setActivoEditando] = useState<ActivoFijo | null>(null)
 
-  // Selecciona la consulta según el alcance de la sucursal del usuario autenticado.
+  // Carga los activos según el alcance de la sesión.
   const cargarDatos = useCallback(async () => {
     setCargando(true)
     setError('')
     setSesionVerificada(false)
+    setEsAdminSistema(false)
     setActivos([])
     setSucursales([])
 
     try {
       const sesion = await obtenerSesion()
+
       const idSucursal = sesion.id_sucursal
+      const adminSistema = sesion.rol?.codigo === 'ADMIN_SISTEMA'
 
       if (
         idSucursal !== null &&
@@ -142,9 +155,12 @@ function ControlActivoFijo() {
       setActivos(activosAlcance)
       setSucursales(sucursalesAlcance)
       setIdSucursalAsignada(idSucursal)
+      setEsAdminSistema(adminSistema)
+
       setFiltroSucursal(
         idSucursal === null ? 'TODAS' : String(idSucursal),
       )
+
       setSesionVerificada(true)
     } catch (errorDesconocido: unknown) {
       setError(
@@ -162,6 +178,7 @@ function ControlActivoFijo() {
     void cargarDatos()
   }, [cargarDatos])
 
+  // Obtiene las categorías existentes para utilizarlas como filtro.
   const categorias = useMemo(
     () =>
       Array.from(
@@ -174,6 +191,7 @@ function ControlActivoFijo() {
     [activos],
   )
 
+  // Aplica búsqueda, sucursal, categoría y estado.
   const activosFiltrados = useMemo(() => {
     const texto = busqueda.trim().toLowerCase()
 
@@ -211,21 +229,26 @@ function ControlActivoFijo() {
     filtroCategoria,
   ])
 
-  const totalActivos = activos.length
-  const valorAdquisicionTotal = activos.reduce(
+  // Las estadísticas se calculan únicamente con los activos filtrados.
+  const totalActivos = activosFiltrados.length
+
+  const valorAdquisicionTotal = activosFiltrados.reduce(
     (total, activo) => total + Number(activo.valor_adquisicion),
     0,
   )
-  const valorActualTotal = activos.reduce(
+
+  const valorActualTotal = activosFiltrados.reduce(
     (total, activo) => total + Number(activo.valor_actual),
     0,
   )
-  const activosMantenimiento = activos.filter(
+
+  const activosMantenimiento = activosFiltrados.filter(
     (activo) => activo.estado === 'MANTENIMIENTO',
   ).length
 
+  // Abre el formulario para registrar un activo.
   const abrirNuevoActivo = () => {
-    if (!sesionVerificada || cargando) {
+    if (!sesionVerificada || cargando || esAdminSistema) {
       return
     }
 
@@ -234,8 +257,9 @@ function ControlActivoFijo() {
     setFormularioAbierto(true)
   }
 
+  // Permite editar únicamente a usuarios operativos autorizados.
   const abrirEditarActivo = (activo: ActivoFijo) => {
-    if (!sesionVerificada || cargando) {
+    if (!sesionVerificada || cargando || esAdminSistema) {
       return
     }
 
@@ -261,6 +285,7 @@ function ControlActivoFijo() {
     setErrorFormulario('')
   }
 
+  // Crea o actualiza un activo fijo.
   const guardarActivo = async (
     datos: CrearActivoFijo | ActualizarActivoFijo,
   ) => {
@@ -269,7 +294,13 @@ function ControlActivoFijo() {
 
     try {
       if (!sesionVerificada) {
-        throw new Error('No se ha verificado la sucursal del usuario.')
+        throw new Error('No se ha verificado la sesión del usuario.')
+      }
+
+      if (esAdminSistema) {
+        throw new Error(
+          'El Administrador del Sistema solo puede consultar activos fijos.',
+        )
       }
 
       if (activoEditando) {
@@ -298,6 +329,7 @@ function ControlActivoFijo() {
 
       setFormularioAbierto(false)
       setActivoEditando(null)
+
       await cargarDatos()
     } catch (errorDesconocido: unknown) {
       setErrorFormulario(
@@ -317,13 +349,14 @@ function ControlActivoFijo() {
     setBusqueda('')
     setFiltroEstado('TODOS')
     setFiltroCategoria('TODAS')
+
     setFiltroSucursal(
       idSucursalAsignada === null ? 'TODAS' : String(idSucursalAsignada),
     )
   }
 
   const hayFiltros =
-    busqueda !== '' ||
+    busqueda.trim() !== '' ||
     filtroEstado !== 'TODOS' ||
     filtroCategoria !== 'TODAS' ||
     (idSucursalAsignada === null && filtroSucursal !== 'TODAS')
@@ -345,6 +378,7 @@ function ControlActivoFijo() {
           <Typography variant="h4" component="h1" sx={{ fontWeight: 800 }}>
             Activos fijos
           </Typography>
+
           <Typography color="text.secondary" sx={{ mt: 0.5 }}>
             Controla los bienes, su ubicación, estado y valor actual por
             sucursal.
@@ -362,21 +396,26 @@ function ControlActivoFijo() {
             Actualizar
           </Button>
 
-          <Button
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            onClick={abrirNuevoActivo}
-            disabled={!sesionVerificada || cargando}
-            sx={{ textTransform: 'none', fontWeight: 600 }}
-          >
-            Nuevo activo
-          </Button>
+          {/* ADMIN_SISTEMA únicamente consulta los activos. */}
+          {!esAdminSistema && (
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={abrirNuevoActivo}
+              disabled={!sesionVerificada || cargando}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
+            >
+              Nuevo activo
+            </Button>
+          )}
         </Stack>
       </Stack>
 
       {cargando && <LinearProgress aria-label="Cargando activos fijos" />}
+
       {error && <Alert severity="error">{error}</Alert>}
 
+      {/* Indicadores recalculados según los filtros aplicados. */}
       <Box
         sx={{
           display: 'grid',
@@ -417,6 +456,7 @@ function ControlActivoFijo() {
         />
       </Box>
 
+      {/* Filtros */}
       <Card variant="outlined" sx={{ borderRadius: 3 }}>
         <CardContent>
           <Stack spacing={2}>
@@ -444,6 +484,7 @@ function ControlActivoFijo() {
                 <InputLabel id="filtro-sucursal-activos-label">
                   Sucursal
                 </InputLabel>
+
                 <Select
                   labelId="filtro-sucursal-activos-label"
                   label="Sucursal"
@@ -471,6 +512,7 @@ function ControlActivoFijo() {
                 <InputLabel id="filtro-categoria-activos-label">
                   Categoría
                 </InputLabel>
+
                 <Select
                   labelId="filtro-categoria-activos-label"
                   label="Categoría"
@@ -480,6 +522,7 @@ function ControlActivoFijo() {
                   }
                 >
                   <MenuItem value="TODAS">Todas las categorías</MenuItem>
+
                   {categorias.map((categoria) => (
                     <MenuItem key={categoria} value={categoria}>
                       {categoria}
@@ -489,7 +532,10 @@ function ControlActivoFijo() {
               </FormControl>
 
               <FormControl fullWidth>
-                <InputLabel id="filtro-estado-activos-label">Estado</InputLabel>
+                <InputLabel id="filtro-estado-activos-label">
+                  Estado
+                </InputLabel>
+
                 <Select
                   labelId="filtro-estado-activos-label"
                   label="Estado"
@@ -510,7 +556,7 @@ function ControlActivoFijo() {
                   variant="text"
                   onClick={limpiarFiltros}
                   sx={{
-                    minWidth: 130,
+                    minWidth: 135,
                     textTransform: 'none',
                     fontWeight: 600,
                   }}
@@ -544,16 +590,16 @@ function ControlActivoFijo() {
             <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap' }}>
               {filtroEstado !== 'TODOS' && (
                 <Chip
-                  size="small"
                   label={`Estado: ${filtroEstado}`}
+                  size="small"
                   onDelete={() => setFiltroEstado('TODOS')}
                 />
               )}
 
               {filtroCategoria !== 'TODAS' && (
                 <Chip
-                  size="small"
                   label={`Categoría: ${filtroCategoria}`}
+                  size="small"
                   onDelete={() => setFiltroCategoria('TODAS')}
                 />
               )}
@@ -562,6 +608,7 @@ function ControlActivoFijo() {
 
           <ActivosFijosTable
             activos={activosFiltrados}
+            puedeEditar={!esAdminSistema}
             onEditar={abrirEditarActivo}
           />
         </>
@@ -575,16 +622,19 @@ function ControlActivoFijo() {
         </Alert>
       )}
 
-      <ActivoFijoForm
-        abierto={formularioAbierto}
-        activo={activoEditando}
-        sucursales={sucursales}
-        idSucursalAsignada={idSucursalAsignada}
-        guardando={guardando}
-        error={errorFormulario}
-        onCerrar={cerrarFormulario}
-        onGuardar={guardarActivo}
-      />
+      {/* El formulario no se monta para ADMIN_SISTEMA. */}
+      {!esAdminSistema && (
+        <ActivoFijoForm
+          abierto={formularioAbierto}
+          activo={activoEditando}
+          sucursales={sucursales}
+          idSucursalAsignada={idSucursalAsignada}
+          guardando={guardando}
+          error={errorFormulario}
+          onCerrar={cerrarFormulario}
+          onGuardar={guardarActivo}
+        />
+      )}
     </Stack>
   )
 }
@@ -636,9 +686,13 @@ function ResumenActivo({
             <Typography variant="body2" color="text.secondary">
               {titulo}
             </Typography>
+
             <Typography
               variant="h5"
-              sx={{ fontWeight: 800, wordBreak: 'break-word' }}
+              sx={{
+                fontWeight: 800,
+                wordBreak: 'break-word',
+              }}
             >
               {valor}
             </Typography>

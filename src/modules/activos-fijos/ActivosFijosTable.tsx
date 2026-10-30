@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+
 import {
   Button,
   Chip,
@@ -12,12 +13,14 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
+
 import EditRoundedIcon from '@mui/icons-material/EditRounded'
 
 import type { ActivoFijo } from './activosFijosService'
 
 interface ActivosFijosTableProps {
   activos: ActivoFijo[]
+  puedeEditar: boolean
   onEditar: (activo: ActivoFijo) => void
 }
 
@@ -31,7 +34,11 @@ const formatoFecha = new Intl.DateTimeFormat('es-GT', {
   dateStyle: 'medium',
 })
 
-function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
+function ActivosFijosTable({
+  activos,
+  puedeEditar,
+  onEditar,
+}: ActivosFijosTableProps) {
   const [pagina, setPagina] = useState(0)
   const [filasPorPagina, setFilasPorPagina] = useState(10)
 
@@ -45,31 +52,43 @@ function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
   )
 
   const obtenerColorEstado = (estado: ActivoFijo['estado']) => {
-    if (estado === 'ACTIVO') return 'success' as const
-    if (estado === 'MANTENIMIENTO') return 'warning' as const
+    if (estado === 'ACTIVO') {
+      return 'success' as const
+    }
+
+    if (estado === 'MANTENIMIENTO') {
+      return 'warning' as const
+    }
+
     return 'default' as const
   }
 
   return (
     <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
       <TableContainer>
-        <Table sx={{ minWidth: 1100 }}>
+        <Table sx={{ minWidth: puedeEditar ? 1100 : 1000 }}>
           <TableHead sx={{ bgcolor: 'action.hover' }}>
             <TableRow>
               <TableCell sx={{ fontWeight: 700 }}>Código</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Activo</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Sucursal</TableCell>
               <TableCell sx={{ fontWeight: 700 }}>Adquisición</TableCell>
+
               <TableCell sx={{ fontWeight: 700 }} align="right">
                 Valor adquisición
               </TableCell>
+
               <TableCell sx={{ fontWeight: 700 }} align="right">
                 Valor actual
               </TableCell>
+
               <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-              <TableCell sx={{ fontWeight: 700 }} align="right">
-                Acciones
-              </TableCell>
+
+              {puedeEditar && (
+                <TableCell sx={{ fontWeight: 700 }} align="right">
+                  Acciones
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
 
@@ -91,6 +110,7 @@ function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
                   >
                     {activo.descripcion}
                   </Typography>
+
                   <Typography variant="caption" color="text.secondary">
                     {activo.categoria}
                   </Typography>
@@ -100,6 +120,7 @@ function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                     {activo.sucursal.nombre}
                   </Typography>
+
                   <Typography variant="caption" color="text.secondary">
                     {activo.sucursal.codigo}
                   </Typography>
@@ -137,17 +158,19 @@ function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
                   />
                 </TableCell>
 
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<EditRoundedIcon />}
-                    onClick={() => onEditar(activo)}
-                    sx={{ textTransform: 'none' }}
-                  >
-                    Editar
-                  </Button>
-                </TableCell>
+                {puedeEditar && (
+                  <TableCell align="right">
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<EditRoundedIcon />}
+                      onClick={() => onEditar(activo)}
+                      sx={{ textTransform: 'none' }}
+                    >
+                      Editar
+                    </Button>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -166,9 +189,7 @@ function ActivosFijosTable({ activos, onEditar }: ActivosFijosTableProps) {
         }}
         rowsPerPageOptions={[10, 25, 50]}
         labelRowsPerPage="Filas por página"
-        labelDisplayedRows={({ from, to, count }) =>
-          `${from}–${to} de ${count}`
-        }
+        labelDisplayedRows={({ from, to, count }) => `${from}–${to} de ${count}`}
       />
     </Paper>
   )
